@@ -86,6 +86,8 @@ class GAILA(data.Dataset):
                 lines = f.readlines()
                 bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[
                                                                                  :-1]])  # GEO: this will include a faulty frame (missing 1 object). Please exclude the whole frame
+            # Exclude the last faulty frame
+            bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
             # Drop annotations for frames not existing on disk
             bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
             # Drop objects in exceptions list
