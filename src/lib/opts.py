@@ -17,9 +17,9 @@ class Opts(object):
                                  help='gaila | coco | kitti | coco_hp | pascal')
         self.parser.add_argument('--frames_per_task', default=200,
                                  help='Number of sample frames to keep for each task (all frames for a task are contained in a single folder)')
-        self.parser.add_argument('--bounds_dir',
+        self.parser.add_argument('--bounds_dir', required=True,
                                  help='Path of root directory containing bounding boxes .txt files.')
-        self.parser.add_argument('--frames_dir',
+        self.parser.add_argument('--frames_dir', required=True,
                                  help='Path of root directory containing frame files (images).')
         self.parser.add_argument('--exp_id', default='default')
         self.parser.add_argument('--test', action='store_true')

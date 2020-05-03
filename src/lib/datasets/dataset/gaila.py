@@ -17,10 +17,11 @@ import torch.utils.data as data
 
 
 class GAILA(data.Dataset):
-    num_classes = None #80
-    default_resolution = None #[512, 512]
-    mean = None #np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
-    std = None #np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
+    ########## KEPT TEMPORARILY ##############
+    num_classes = 80
+    default_resolution = [512, 512]
+    mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
+    std = np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
 
     def __init__(self, opt, split):
 
@@ -64,6 +65,8 @@ class GAILA(data.Dataset):
         self.opt = opt
 
         task_dirs = glob.glob(os.path.join(opt.frames_dir, '*/*'))  # list of all task directories
+        if len(task_dirs) == 0:
+            raise Exception('No task directories found using: {}'.format(os.path.join(opt.frames_dir, '*/*')))
 
         if self.split != 'train':
             selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
@@ -75,6 +78,9 @@ class GAILA(data.Dataset):
             image_ids = os.listdir(_dir)
             image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
             bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
+            if not os.path.exists(bbox_path):
+                print("ERROR: {} not found!".format(bbox_path))
+                continue
             with open(bbox_path, 'r') as f:
                 lines = f.readlines()
                 bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[

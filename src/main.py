@@ -99,5 +99,5 @@ def main(opt):
 
 
 if __name__ == '__main__':
-    opt = opts().parse()
+    opt = Opts().parse()
     main(opt)
