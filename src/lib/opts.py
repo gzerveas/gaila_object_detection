@@ -21,6 +21,8 @@ class Opts(object):
                                  help='Path of root directory containing bounding boxes .txt files.')
         self.parser.add_argument('--frames_dir', required=True,
                                  help='Path of root directory containing frame files (images).')
+        self.parser.add_argument('--class_name_path', required=False,
+                                 help='Path of .txt file containing class names, 1 per line')
         self.parser.add_argument('--exp_id', default='default')
         self.parser.add_argument('--test', action='store_true')
         self.parser.add_argument('--debug', type=int, default=0,

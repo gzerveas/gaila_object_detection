@@ -18,7 +18,8 @@ import torch.utils.data as data
 
 class GAILA(data.Dataset):
     ########## NEED TO COMPUTE ##############
-    num_classes = 80
+    num_classes = 36
+    class_exceptions = ['Wall', 'Ceiling']
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
     std = np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
@@ -85,7 +86,10 @@ class GAILA(data.Dataset):
                 lines = f.readlines()
                 bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[
                                                                                  :-1]])  # GEO: this will include a faulty frame (missing 1 object). Please exclude the whole frame
+            # Drop annotations for frames not existing on disk
             bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
+            # Drop objects in exceptions list
+            bbox_frame = bbox_frame[~bbox_frame.name.isin(GAILA.class_exceptions)]
             bbox_frame = list(bbox_frame.groupby('step'))  # list of step/frame groups
             random.shuffle(bbox_frame)
             selected_frames = bbox_frame[:opt.frames_per_task]
@@ -94,18 +98,23 @@ class GAILA(data.Dataset):
 
         random.shuffle(self.all_frames)
 
-        for i in range(len(opt.bounds_dir)):  # find common path part
-            if opt.frames_dir[i] != opt.bounds_dir[i]:
-                break
-        gaila_dir = opt.bounds_dir[:i]
-        # GEO: no, this file contains crap too. Read the classes from all unique objects in the 'name' column of the dataframe. Exclude 'Wall'
-        class_names = [line.rstrip() for line in open(os.path.join(os.path.join(gaila_dir, 'possible_labels.txt'))).readlines()]
+        if opt.class_name_path is None:
+            dataframes = pd.concat(annotations for path, annotations in self.all_frames)
+            self.class_name = sorted(list(dataframes.name.unique()))
+            print("{} classes extracted: {}".format(len(self.class_name), self.class_name))
+        else:
+            # for i in range(len(opt.bounds_dir)):  # find common path part
+            #     if opt.frames_dir[i] != opt.bounds_dir[i]:
+            #         break
+            # gaila_dir = opt.bounds_dir[:i]
+            # class_name_path = os.path.join(gaila_dir, 'possible_labels.txt')
+            self.class_name = [line.rstrip() for line in open(opt.class_name_path).readlines()]
+            print("{} classes in file '{}': {}".format(len(self.class_name), opt.class_name_path, self.class_name))
 
-        self.cat_ids = {name: ind for ind, name in enumerate(class_names)}
-
+        self.cat_ids = {name: ind for ind, name in enumerate(self.class_name)}
         self.num_samples = len(self.all_frames)
 
-        print('Loaded {} samples for {}'.format(self.num_samples, split))
+        print('Loaded {} frames/samples for {}'.format(self.num_samples, split))
 
     def _to_float(self, x):
         return float("{:.2f}".format(x))

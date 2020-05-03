@@ -50,6 +50,7 @@ class COCO(data.Dataset):
       'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
       'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
       'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+    print("Length of class_name: {}".format(len(self.class_name)))
     self._valid_ids = [
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 
       14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
@@ -60,6 +61,8 @@ class COCO(data.Dataset):
       72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 
       82, 84, 85, 86, 87, 88, 89, 90]
     self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
+    print("Number of cat_ids: {}".format(len(self.cat_ids.keys())))
+    print("cat_ids: {}".format(len(self.cat_ids.items())))
     self.voc_color = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) \
                       for v in range(1, self.num_classes + 1)]
     self._data_rng = np.random.RandomState(123)
