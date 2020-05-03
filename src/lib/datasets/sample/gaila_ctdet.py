@@ -91,8 +91,9 @@ class GAILA_CTDetDataset(data.Dataset):
                              (input_w, input_h),
                              flags=cv2.INTER_LINEAR)
         inp = (inp.astype(np.float32) / 255.)
-        if self.split == 'train' and not self.opt.no_color_aug:
+        if self.split == 'train' and not self.opt.no_color_aug: # this is the default!
             color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
+        # GEO: we need to calculate the mean and std in datasets/dataset/gaila.py
         inp = (inp - self.mean) / self.std
         inp = inp.transpose(2, 0, 1)
 

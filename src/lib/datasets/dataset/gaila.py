@@ -17,7 +17,7 @@ import torch.utils.data as data
 
 
 class GAILA(data.Dataset):
-    ########## KEPT TEMPORARILY ##############
+    ########## NEED TO COMPUTE ##############
     num_classes = 80
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
@@ -49,10 +49,10 @@ class GAILA(data.Dataset):
         self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
         self.voc_color = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) \
                           for v in range(1, self.num_classes + 1)]
-        self._data_rng = np.random.RandomState(123)
-        self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571],
+        self._data_rng = np.random.RandomState(123) # GEO: needed with no_color_aug
+        self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571], # GEO: needed with no_color_aug
                                  dtype=np.float32)
-        self._eig_vec = np.array([
+        self._eig_vec = np.array([ # GEO: needed with no_color_aug
             [-0.58752847, -0.69563484, 0.41340352],
             [-0.5832747, 0.00994535, -0.81221408],
             [-0.56089297, 0.71832671, 0.41158938]
