@@ -13,12 +13,15 @@ from .networks.pose_dla_dcn import get_pose_net as get_dla_dcn
 from .networks.resnet_dcn import get_pose_net as get_pose_net_dcn
 from .networks.large_hourglass import get_large_hourglass_net
 
+from .networks.simple_resdcn import get_simple_net
+
 _model_factory = {
-  'res': get_pose_net, # default Resnet with deconv
-  'dlav0': get_dlav0, # default DLAup
-  'dla': get_dla_dcn,
-  'resdcn': get_pose_net_dcn,
-  'hourglass': get_large_hourglass_net,
+    'simple': get_simple_net, # simpler Resnet with DCN and deconv
+    'res': get_pose_net, # default Resnet with deconv
+    'dlav0': get_dlav0, # default DLAup
+    'dla': get_dla_dcn,
+    'resdcn': get_pose_net_dcn,
+    'hourglass': get_large_hourglass_net
 }
 
 def create_model(arch, heads, head_conv):

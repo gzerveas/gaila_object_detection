@@ -45,7 +45,8 @@ def demo(opt):
     else:
       image_names = [opt.demo]
     
-    for (image_name) in image_names:
+    for image_name in image_names:
+      print("Running on '{}'...".format(image_name))
       ret = detector.run(image_name)
       time_str = ''
       for stat in time_stats:
