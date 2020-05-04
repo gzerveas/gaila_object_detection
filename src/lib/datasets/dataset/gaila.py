@@ -12,6 +12,7 @@ import glob
 from tqdm import tqdm
 import re
 import pandas as pd
+import pickle
 
 import torch.utils.data as data
 
@@ -29,21 +30,21 @@ class GAILA(data.Dataset):
         super(GAILA, self).__init__()
 
         ########## KEPT TEMPORARILY ##############
-        self.data_dir = os.path.join(opt.data_dir, 'coco')
-        self.img_dir = os.path.join(self.data_dir, '{}2017'.format(split))
-        if split == 'test':
-            self.annot_path = os.path.join(
-                self.data_dir, 'annotations',
-                'image_info_test-dev2017.json').format(split)
-        else:
-            if opt.task == 'exdet':
-                self.annot_path = os.path.join(
-                    self.data_dir, 'annotations',
-                    'instances_extreme_{}2017.json').format(split)
-            else:
-                self.annot_path = os.path.join(
-                    self.data_dir, 'annotations',
-                    'instances_{}2017.json').format(split)
+        # self.data_dir = os.path.join(opt.data_dir, 'coco')
+        # self.img_dir = os.path.join(self.data_dir, '{}2017'.format(split))
+        # if split == 'test':
+        #     self.annot_path = os.path.join(
+        #         self.data_dir, 'annotations',
+        #         'image_info_test-dev2017.json').format(split)
+        # else:
+        #     if opt.task == 'exdet':
+        #         self.annot_path = os.path.join(
+        #             self.data_dir, 'annotations',
+        #             'instances_extreme_{}2017.json').format(split)
+        #     else:
+        #         self.annot_path = os.path.join(
+        #             self.data_dir, 'annotations',
+        #             'instances_{}2017.json').format(split)
         self.max_objs = 64  # 128
         self.class_name = ['__background__', 'nothing']
         self._valid_ids = [0]
@@ -65,49 +66,66 @@ class GAILA(data.Dataset):
         self.split = split  # which split of the dataset we are looking at
         self.opt = opt
 
-        task_dirs = glob.glob(os.path.join(opt.frames_dir, '*/*'))  # list of all task directories
-        if len(task_dirs) == 0:
-            raise Exception('No task directories found using: {}'.format(os.path.join(opt.frames_dir, '*/*')))
-
-        if self.split != 'train':
-            selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+        if opt.load_annotations is not None:
+            load_path = os.path.join(opt.load_annotations, 'frame_annotations_{}.pickle'.format(self.split))
+            print("Loading annotations from {} ... ".format(load_path), end="")
+            with open(load_path, 'rb') as f:
+                # The protocol version used is detected automatically
+                self.all_frames = pickle.load(f)
+                print("Done")
         else:
-            selected_dirs = list(filter(lambda x: not re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+            print('Building GAILA dataset ...')
+            task_dirs = glob.glob(os.path.join(opt.frames_dir, '*/*'))  # list of all task directories
+            if len(task_dirs) == 0:
+                raise Exception('No task directories found using: {}'.format(os.path.join(opt.frames_dir, '*/*')))
 
-        self.all_frames = []  # (frame path, frame dataframe containing annotations)
-        for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
-            image_ids = os.listdir(_dir)
-            image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
-            bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
-            raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
-            if not os.path.exists(bbox_path):
-                print("ERROR: {} not found!".format(bbox_path))
-                continue
-            if not os.path.exists(raw_path):
-                print("ERROR: {} not found!".format(raw_path))
-                continue
-            with open(bbox_path, 'r') as f:
-                lines = f.readlines()
-                bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[:-1]])  # this excludes last (malformed) line (missing 1 object)
-            with open(raw_path, 'r') as f:
-                lines = f.readlines()
-                raw_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines])
-            # Exclude the last faulty frame
-            bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
-            # Drop annotations for objects that are not visible
-            raw_frame = raw_frame[raw_frame['visible'] == True]
-            bbox_index = bbox_frame.set_index('step').index
-            raw_index = raw_frame.set_index('step').index
-            bbox_frame = bbox_frame[bbox_index.isin(raw_index)]
-            # Drop annotations for frames not existing on disk
-            bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
-            # Drop objects in exceptions list
-            bbox_frame = bbox_frame[~bbox_frame.name.isin(GAILA.class_exceptions)]
-            bbox_frame = list(bbox_frame.groupby('step'))  # list of step/frame groups
-            random.shuffle(bbox_frame)
-            selected_frames = bbox_frame[:opt.frames_per_task]
-            selected_frames = [(os.path.join(_dir, str(i) + '.png'), j) for i, j in selected_frames]
-            self.all_frames.extend(selected_frames)
+            if self.split != 'train':
+                selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+            else:
+                selected_dirs = list(filter(lambda x: not re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+
+            self.all_frames = []  # (frame path, frame dataframe containing annotations)
+            for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
+                image_ids = os.listdir(_dir)
+                image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
+                bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
+                raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
+                if not os.path.exists(bbox_path):
+                    print("ERROR: {} not found!".format(bbox_path))
+                    continue
+                if not os.path.exists(raw_path):
+                    print("ERROR: {} not found!".format(raw_path))
+                    continue
+                with open(bbox_path, 'r') as f:
+                    lines = f.readlines()
+                    bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[:-1]])  # this excludes last (malformed) line (missing 1 object)
+                with open(raw_path, 'r') as f:
+                    lines = f.readlines()
+                    raw_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines])
+                # Exclude the last faulty frame
+                bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
+                # Drop annotations for objects that are not visible
+                raw_frame = raw_frame[raw_frame['visible'] == True]
+                bbox_index = bbox_frame.set_index('step').index
+                raw_index = raw_frame.set_index('step').index
+                bbox_frame = bbox_frame[bbox_index.isin(raw_index)]
+                # Drop annotations for frames not existing on disk
+                bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
+                # Drop objects in exceptions list
+                bbox_frame = bbox_frame[~bbox_frame.name.isin(GAILA.class_exceptions)]
+                bbox_frame = list(bbox_frame.groupby('step'))  # list of step/frame groups
+                random.shuffle(bbox_frame)
+                selected_frames = bbox_frame[:opt.frames_per_task]
+                selected_frames = [(os.path.join(_dir, str(i) + '.png'), j) for i, j in selected_frames]
+                self.all_frames.extend(selected_frames)
+
+                if opt.save_annotations is not None:
+                    write_path = os.path.join(opt.save_annotations, 'frame_annotations_{}.pickle'.format(self.split))
+                    print("Serializing annotations into {} ... ".format(write_path), end="")
+                    with open(write_path, 'wb') as f:
+                        pickle.dump(self.all_frames, f, pickle.HIGHEST_PROTOCOL)
+                    print("Done")
+
 
         random.shuffle(self.all_frames)
 

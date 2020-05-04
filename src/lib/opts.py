@@ -17,10 +17,14 @@ class Opts(object):
                                  help='gaila | coco | kitti | coco_hp | pascal')
         self.parser.add_argument('--frames_per_task', default=200,
                                  help='Number of sample frames to keep for each task (all frames for a task are contained in a single folder)')
-        self.parser.add_argument('--bounds_dir', required=True,
+        self.parser.add_argument('--bounds_dir',
                                  help='Path of root directory containing bounding boxes .txt files.')
-        self.parser.add_argument('--frames_dir', required=True,
+        self.parser.add_argument('--frames_dir',
                                  help='Path of root directory containing frame files (images).')
+        self.parser.add_argument('--save_annotations',
+                                 help='Path of directory where to serialize frame annotations')
+        self.parser.add_argument('--load_annotations',
+                                 help='Path of directory containing serialized frame annotations')
         self.parser.add_argument('--class_name_path', required=False,
                                  help='Path of .txt file containing class names, 1 per line')
         self.parser.add_argument('--exp_id', default='default')
