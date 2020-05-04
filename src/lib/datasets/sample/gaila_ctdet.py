@@ -67,8 +67,8 @@ class GAILA_CTDetDataset(data.Dataset):
                 bottom_right = (bbox[0] + visible_width - 1, bbox[1] + visible_height - 1)
                 _bbox = (top_left, bottom_right)
         if _bbox is not None:
-            _bbox = np.array([_bbox[0], _bbox[1], _bbox[2], _bbox[3]],
-                            dtype=np.float32)
+            _bbox = np.array([_bbox[0][0], _bbox[0][1], _bbox[1][0], _bbox[1][1]],
+                            dtype=np.int32).astype(np.float32)
         return _bbox
 
     def _get_border(self, border, size):

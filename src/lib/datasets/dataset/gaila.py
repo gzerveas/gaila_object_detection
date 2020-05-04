@@ -73,21 +73,34 @@ class GAILA(data.Dataset):
             selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
         else:
             selected_dirs = list(filter(lambda x: not re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
-
+        selected_dirs = selected_dirs[:1]
         self.all_frames = []  # (frame path, frame dataframe containing annotations)
         for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
             image_ids = os.listdir(_dir)
             image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
             bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
+            raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
             if not os.path.exists(bbox_path):
                 print("ERROR: {} not found!".format(bbox_path))
+                continue
+            if not os.path.exists(raw_path):
+                print("ERROR: {} not found!".format(raw_path))
                 continue
             with open(bbox_path, 'r') as f:
                 lines = f.readlines()
                 bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[
                                                                                  :-1]])  # GEO: this will include a faulty frame (missing 1 object). Please exclude the whole frame
+            with open(raw_path, 'r') as f:
+                lines = f.readlines()
+                raw_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines])
             # Exclude the last faulty frame
+            raw_frame = raw_frame[raw_frame['step'] != bbox_frame.iloc[-1]['step']]
             bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
+            # Drop annotations for objects that are not dynamic and visible
+            raw_frame = raw_frame[(raw_frame['visible'] == True) & (raw_frame['dynamic'] == True)]
+            bbox_index = bbox_frame.set_index('step').index
+            raw_index = raw_frame.set_index('step').index
+            bbox_frame = bbox_frame[bbox_index.isin(raw_index)]
             # Drop annotations for frames not existing on disk
             bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
             # Drop objects in exceptions list
