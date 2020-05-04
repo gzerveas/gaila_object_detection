@@ -32,10 +32,42 @@ class GAILA_CTDetDataset(data.Dataset):
 
     ######################################## End of Added Code Block #####################################################
 
-    def _coco_box_to_bbox(self, box):
-        bbox = np.array([box[0], box[1], box[0] + box[2], box[1] + box[3]],
-                        dtype=np.float32)
-        return bbox
+    def _coco_box_to_bbox(self, bbox, shape, threshold):
+
+        top_left = (bbox[0], bbox[1])
+        bottom_right = (bbox[0] + bbox[2], bbox[1] + bbox[3])
+        _bbox = (top_left, bottom_right)
+        if top_left[0] <= 0 or top_left[1] <= 0 and _bbox is not None:
+            visible_width = bbox[2]
+            visible_height = bbox[3]
+
+            if top_left[0] < 0:
+                visible_width = visible_width + top_left[0]
+            if top_left[1] < 0:
+                visible_height = visible_height + top_left[1]
+            threshold = 0.3
+            if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
+                _bbox = None
+            else:
+                bottom_right = (bottom_right[0] - visible_width + 1, bottom_right[1] - visible_height + 1)
+                _bbox = (top_left, bottom_right)
+        if bottom_right[0] >= shape[1] or bottom_right[1] >= shape[0] and _bbox is not None:
+            visible_width = bbox[2]
+            visible_height = bbox[3]
+
+            if bottom_right[0] >= shape[1]:
+                visible_width = shape[1] - top_left[0]
+            if bottom_right[1] >= shape[0]:
+                visible_height = shape[0] - top_left[1]
+
+
+            if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
+                _bbox = None
+            else:
+                bottom_right = (bbox[0] + visible_width - 1, bbox[1] + visible_height - 1)
+                _bbox = (top_left, bottom_right)
+            
+        return _bbox
 
     def _get_border(self, border, size):
         i = 1
@@ -54,6 +86,7 @@ class GAILA_CTDetDataset(data.Dataset):
         num_objs = min(len(anns), self.max_objs)
 
         img = cv2.imread(img_path)
+        img_shape = img.shape
 
         height, width = img.shape[0], img.shape[1]
         c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
@@ -119,11 +152,9 @@ class GAILA_CTDetDataset(data.Dataset):
             ######################################## Start of modified Code Block #####################################################
             ann = anns.iloc[k]
             box_input = [ann['pixelPosX'], ann['pixelPosY'], ann['pixelWidth'], ann['pixelHeight']]
-            ######################################## End of modified Code Block #####################################################
-
-            bbox = self._coco_box_to_bbox(box_input)
-
-            ######################################## Start of modified Code Block #####################################################
+            bbox = self._coco_box_to_bbox(box_input, img_shape, threshold=0.3)
+            if bbox is None:
+                continue
             cls_id = int(self.cat_ids[ann['name']])
             ######################################## End of modified Code Block #####################################################
 
