@@ -21,17 +21,18 @@ sys.path.insert(0, CENTERNET_PATH)
 
 from detectors.detector_factory import detector_factory
 from opts import opts
+from datasets.dataset.gaila import GAILA
 
 
 
 
-def Gaila_Detection(Gaila_path, Task_ids, Scene_ids, MODEL_PATH, class_names,  SampleRate=1, Vis_thresh=0.3):
+def Gaila_Detection(Gaila_path, Task_ids, Scene_ids, MODEL_PATH, SampleRate=1, Vis_thresh=0.3):
     
     Output_path= './Output/'
     TASK = 'ctdet'
     opt  = opts().init('{} --load_model {} --vis_thresh {}'.format(TASK, MODEL_PATH, Vis_thresh).split(' '))
     detector = detector_factory[opt.task](opt)
-
+    class_names = GAILA(opt, 'test').class_name
 
     for scene in Scene_ids:
         for task in Task_ids:
