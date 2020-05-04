@@ -11,7 +11,7 @@ from pycocotools.cocoeval import COCOeval
 import numpy as np
 import skimage.io as io
 import pylab
-from Pred_utility import *
+from pred_utility import *
 import argparse
 
 

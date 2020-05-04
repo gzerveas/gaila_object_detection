@@ -15,7 +15,7 @@ class Opts(object):
                                  help='gaila_ctdet | ctdet | ddd | multi_pose | exdet')
         self.parser.add_argument('--dataset', default='gaila',
                                  help='gaila | coco | kitti | coco_hp | pascal')
-        self.parser.add_argument('--frames_per_task', default=200,
+        self.parser.add_argument('--frames_per_task', type=int, default=200,
                                  help='Number of sample frames to keep for each task (all frames for a task are contained in a single folder)')
         self.parser.add_argument('--bounds_dir',
                                  help='Path of root directory containing bounding boxes .txt files.')
@@ -25,8 +25,10 @@ class Opts(object):
                                  help='Path of directory where to serialize frame annotations')
         self.parser.add_argument('--load_annotations',
                                  help='Path of directory containing serialized frame annotations')
-        self.parser.add_argument('--class_name_path', required=False,
-                                 help='Path of .txt file containing class names, 1 per line')
+        self.parser.add_argument('--classnames_from', required=False,
+                                 help='Path of .txt file containing class names, 1 per line. Otherwise class names are detected from annotations.')
+        self.parser.add_argument('--save_classnames_to', required=False,
+                                 help='Path of .txt file where to write detected class names, 1 per line')
         self.parser.add_argument('--exp_id', default='default')
         self.parser.add_argument('--test', action='store_true')
         self.parser.add_argument('--debug', type=int, default=0,
