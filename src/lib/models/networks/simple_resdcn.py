@@ -4,14 +4,15 @@ import math
 from torch import nn
 from .DCNv2.dcn_v2 import DCN
 
-
 BN_MOMENTUM = 0.1
+
 
 def get_simple_net(num_layers, heads, head_conv=256):
 
-  model = DCN_Detector(heads)
-  #model.init_weights(num_layers)
-  return model
+    model = DCN_Detector(heads)
+    # model.init_weights(num_layers)
+    return model
+
 
 def fill_up_weights(layer):
     """Custom function for initializing upsampling layers"""
@@ -44,12 +45,14 @@ class ResBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        # Spatial downsampling only in the first conv layer. The 2nd has stride=1
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM)
 
         # If necessary, transform input to match residual dimensions
         if stride != 1 or in_channels != out_channels:
             self.downsample = nn.Sequential(
+                            # Kernel size is 1: only spatial downsampling and channel expansion
                             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
                             nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM))
         else:
@@ -83,7 +86,7 @@ class TranspConvBlock(nn.Module):
         self.fc = DCN(in_channels, out_channels, kernel_size=(3,3), stride=1, padding=1, dilation=1, deformable_groups=1)
         # fc = nn.Conv2d(self.inplanes, planes, kernel_size=3, stride=1, padding=1, dilation=1, bias=False)
         # fill_fc_weights(fc)
-        up = nn.ConvTranspose2d(
+        self.upsample = nn.ConvTranspose2d(
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=4,
@@ -91,7 +94,7 @@ class TranspConvBlock(nn.Module):
                 padding=1,
                 output_padding=0,
                 bias=bias)
-        fill_up_weights(up)
+        fill_up_weights(self.upsample)
 
         self.bn1 = nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM)
         self.bn2 = nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM)
@@ -102,7 +105,7 @@ class TranspConvBlock(nn.Module):
         out = self.fc(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.up(out)
+        out = self.upsample(out)
         out = self.bn2(out)
         out = self.relu(out)
 
