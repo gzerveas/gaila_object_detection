@@ -60,6 +60,8 @@ class GAILA(data.Dataset):
         ], dtype=np.float32)
         # self.mean = np.array([0.485, 0.456, 0.406], np.float32).reshape(1, 1, 3)
         # self.std = np.array([0.229, 0.224, 0.225], np.float32).reshape(1, 1, 3)
+        self.threshold = 0.3  # threshold to filter the bounding boxes
+        self.img_shape = [960, 540]  # size of each frame
         ########## KEPT TEMPORARILY ##############
 
         self.split = split  # which split of the dataset we are looking at
@@ -106,7 +108,7 @@ class GAILA(data.Dataset):
             bbox_frame = list(bbox_frame.groupby('step'))  # list of step/frame groups
             random.shuffle(bbox_frame)
             selected_frames = bbox_frame[:opt.frames_per_task]
-            selected_frames = [(os.path.join(_dir, str(i) + '.png'), j) for i, j in selected_frames]
+            selected_frames = [(os.path.join(_dir, str(i) + '.png'), self._filter_bboxes(j)) for i, j in selected_frames]
             self.all_frames.extend(selected_frames)
 
         random.shuffle(self.all_frames)
@@ -128,6 +130,75 @@ class GAILA(data.Dataset):
         self.num_samples = len(self.all_frames)
 
         print('Loaded {} frames/samples for {}'.format(self.num_samples, split))
+
+
+    def _coco_box_to_bbox(self, bbox):
+        """
+        logic: if (x < -0.8*box_width) or (x > W - 0.2*box_width) or (y < -0.8*box_height) or (y > H - 0.2*box_height):
+                    ignore object
+                else:
+                    redefine (crop) box to fit inside the image
+        :param bbox:  [x, y, bbox_width, bbox_height], where (x,y) the coordinates of the top left corner of the box
+        :param img_shape: [image_width, image_height]
+        :param threshold:
+        :return: None if object is filtered out,
+                otherwise same or cropped [x, y, bbox_width, bbox_height]
+        """
+
+        top_left = (bbox[0], bbox[1])
+        bottom_right = (bbox[0] + bbox[2], bbox[1] + bbox[3])
+        _bbox = (top_left, bottom_right)
+        if top_left[0] <= 0 or top_left[1] <= 0:
+            visible_width = bbox[2]
+            visible_height = bbox[3]
+
+            if top_left[0] < 0:
+                visible_width = visible_width + top_left[0]
+            if top_left[1] < 0:
+                visible_height = visible_height + top_left[1]
+
+            if visible_height < self.threshold * bbox[3] or visible_width < self.threshold * bbox[2]:
+                return None
+            else:
+                top_left = (bottom_right[0] - visible_width + 1, bottom_right[1] - visible_height + 1)
+                _bbox = (top_left, bottom_right)
+        if bottom_right[0] >= self.img_shape[1] or bottom_right[1] >= self.img_shape[0]:
+            visible_width = bbox[2]
+            visible_height = bbox[3]
+
+            if bottom_right[0] >= self.img_shape[1]:
+                visible_width = self.img_shape[1] - top_left[0]
+            if bottom_right[1] >= self.img_shape[0]:
+                visible_height = self.img_shape[0] - top_left[1]
+
+            if visible_height < self.threshold * bbox[3] or visible_width < self.threshold * bbox[2]:
+                return None
+            else:
+                bottom_right = (top_left[0] + visible_width - 1, top_left[1] + visible_height - 1)
+                _bbox = (top_left, bottom_right)
+        if _bbox is not None:
+            _bbox = np.array([_bbox[0][0], _bbox[0][1], _bbox[1][0], _bbox[1][1]],
+                            dtype=np.int32).astype(np.float32)
+        return _bbox
+
+    def _filter_bboxes(self, dataframe):
+        object_list = list()
+        num_objects = len(dataframe)
+        for i in range(num_objects):
+            input_bbox = dataframe.iloc[i]
+            bbox = [input_bbox['pixelPosX'], input_bbox['pixelPosY'], input_bbox['pixelWidth'], input_bbox['pixelHeight']]
+            new_bbox = self._coco_box_to_bbox(bbox)
+            if new_bbox is not None:
+                input_bbox.at["pixelPosX"] = new_bbox[0]
+                input_bbox.at["pixelPosY"] = new_bbox[1]
+                input_bbox.at["pixelWidth"] = new_bbox[2]
+                input_bbox.at["pixelHeight"] = new_bbox[3]
+                object_list.append(input_bbox)
+
+        df = pd.DataFrame(object_list)
+        df = df.rename(columns={"pixelPosX": "topLeftX", "pixelPosY": "topLeftY", "pixelWidth": "bottomeRightX", "pixelHeight": "bottomeRightY"})
+        return df
+
 
     def _to_float(self, x):
         return float("{:.2f}".format(x))

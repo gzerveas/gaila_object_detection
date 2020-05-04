@@ -21,54 +21,7 @@ class GAILA_CTDetDataset(data.Dataset):
 
     ######################################## End of Added Code Block #####################################################
 
-    def _coco_box_to_bbox(self, bbox, img_shape, threshold=0.3):
-        """
-        logic: if (x < -0.8*box_width) or (x > W - 0.2*box_width) or (y < -0.8*box_height) or (y > H - 0.2*box_height):
-                    ignore object
-                else:
-                    redefine (crop) box to fit inside the image
-        :param bbox:  [x, y, bbox_width, bbox_height], where (x,y) the coordinates of the top left corner of the box
-        :param img_shape: [image_width, image_height]
-        :param threshold:
-        :return: None if object is filtered out,
-                otherwise same or cropped [x, y, bbox_width, bbox_height]
-        """
 
-        top_left = (bbox[0], bbox[1])
-        bottom_right = (bbox[0] + bbox[2], bbox[1] + bbox[3])
-        _bbox = (top_left, bottom_right)
-        if top_left[0] <= 0 or top_left[1] <= 0:
-            visible_width = bbox[2]
-            visible_height = bbox[3]
-
-            if top_left[0] < 0:
-                visible_width = visible_width + top_left[0]
-            if top_left[1] < 0:
-                visible_height = visible_height + top_left[1]
-
-            if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
-                return None
-            else:
-                bottom_right = (bottom_right[0] - visible_width + 1, bottom_right[1] - visible_height + 1)
-                _bbox = (top_left, bottom_right)
-        if bottom_right[0] >= img_shape[1] or bottom_right[1] >= img_shape[0]:
-            visible_width = bbox[2]
-            visible_height = bbox[3]
-
-            if bottom_right[0] >= img_shape[1]:
-                visible_width = img_shape[1] - top_left[0]
-            if bottom_right[1] >= img_shape[0]:
-                visible_height = img_shape[0] - top_left[1]
-
-            if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
-                return None
-            else:
-                bottom_right = (bbox[0] + visible_width - 1, bbox[1] + visible_height - 1)
-                _bbox = (top_left, bottom_right)
-        if _bbox is not None:
-            _bbox = np.array([_bbox[0][0], _bbox[0][1], _bbox[1][0], _bbox[1][1]],
-                            dtype=np.int32).astype(np.float32)
-        return _bbox
 
     def _get_border(self, border, size):
         i = 1
@@ -152,10 +105,7 @@ class GAILA_CTDetDataset(data.Dataset):
         for k in range(num_objs):
             ######################################## Start of modified Code Block #####################################################
             ann = anns.iloc[k]
-            box_input = [ann['pixelPosX'], ann['pixelPosY'], ann['pixelWidth'], ann['pixelHeight']]
-            bbox = self._coco_box_to_bbox(box_input, img_shape, threshold=0.3)
-            if bbox is None:
-                continue
+            bbox = np.asarray([ann['pixelPosX'], ann['pixelPosY'], ann['bottomeRightX'], ann['bottomeRightY']], dtype=np.float32)
             cls_id = int(self.cat_ids[ann['name']])
             ######################################## End of modified Code Block #####################################################
 
