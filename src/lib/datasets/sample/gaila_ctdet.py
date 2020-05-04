@@ -23,7 +23,7 @@ class GAILA_CTDetDataset(data.Dataset):
 
     def _coco_box_to_bbox(self, bbox, img_shape, threshold=0.3):
         """
-        logic: if (x < -0.8*box_width) or (x > W - 0.2*box_width) or (y < -0.8*box_height) or (y > H - 0.2*box_height):e
+        logic: if (x < -0.8*box_width) or (x > W - 0.2*box_width) or (y < -0.8*box_height) or (y > H - 0.2*box_height):
                     ignore object
                 else:
                     redefine (crop) box to fit inside the image
