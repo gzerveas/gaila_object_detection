@@ -44,7 +44,7 @@ class GAILA(data.Dataset):
                 self.annot_path = os.path.join(
                     self.data_dir, 'annotations',
                     'instances_{}2017.json').format(split)
-        self.max_objs = 128
+        self.max_objs = 64  # 128
         self.class_name = ['__background__', 'nothing']
         self._valid_ids = [0]
         self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
@@ -84,8 +84,7 @@ class GAILA(data.Dataset):
                 continue
             with open(bbox_path, 'r') as f:
                 lines = f.readlines()
-                bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[
-                                                                                 :-1]])  # GEO: this will include a faulty frame (missing 1 object). Please exclude the whole frame
+                bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[:-1]])  # this excludes last (malformed) line (missing 1 object)
             # Exclude the last faulty frame
             bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
             # Drop annotations for frames not existing on disk

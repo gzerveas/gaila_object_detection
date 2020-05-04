@@ -4,24 +4,14 @@ from __future__ import print_function
 
 import torch.utils.data as data
 import numpy as np
-import torch
-import json
 import cv2
-import os
+
 from utils.image import flip, color_aug
 from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
 from utils.image import draw_dense_reg
 import math
-import random
-import glob
-from tqdm import tqdm
-import re
-import pandas as pd
 
-
-def get_gaila():
-    pass
 
 
 class GAILA_CTDetDataset(data.Dataset):
@@ -32,12 +22,23 @@ class GAILA_CTDetDataset(data.Dataset):
 
     ######################################## End of Added Code Block #####################################################
 
-    def _coco_box_to_bbox(self, bbox, shape, threshold):
+    def _coco_box_to_bbox(self, bbox, img_shape, threshold=0.3):
+        """
+        logic: if (x < -0.8*box_width) or (x > W - 0.2*box_width) or (y < -0.8*box_height) or (y > H - 0.2*box_height):
+                    ignore object
+                else:
+                    redefine (crop) box to fit inside the image
+        :param bbox:  [x, y, bbox_width, bbox_height], where (x,y) the coordinates of the top left corner of the box
+        :param img_shape: [image_width, image_height]
+        :param threshold:
+        :return: None if object is filtered out,
+                otherwise same or cropped [x, y, bbox_width, bbox_height]
+        """
 
         top_left = (bbox[0], bbox[1])
         bottom_right = (bbox[0] + bbox[2], bbox[1] + bbox[3])
         _bbox = (top_left, bottom_right)
-        if top_left[0] <= 0 or top_left[1] <= 0 and _bbox is not None:
+        if top_left[0] <= 0 or top_left[1] <= 0:
             visible_width = bbox[2]
             visible_height = bbox[3]
 
@@ -45,30 +46,28 @@ class GAILA_CTDetDataset(data.Dataset):
                 visible_width = visible_width + top_left[0]
             if top_left[1] < 0:
                 visible_height = visible_height + top_left[1]
-            threshold = 0.3
+
             if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
-                _bbox = None
+                return None
             else:
                 bottom_right = (bottom_right[0] - visible_width + 1, bottom_right[1] - visible_height + 1)
                 _bbox = (top_left, bottom_right)
-        if bottom_right[0] >= shape[1] or bottom_right[1] >= shape[0] and _bbox is not None:
+        if bottom_right[0] >= img_shape[1] or bottom_right[1] >= img_shape[0]:
             visible_width = bbox[2]
             visible_height = bbox[3]
 
-            if bottom_right[0] >= shape[1]:
-                visible_width = shape[1] - top_left[0]
-            if bottom_right[1] >= shape[0]:
-                visible_height = shape[0] - top_left[1]
-
+            if bottom_right[0] >= img_shape[1]:
+                visible_width = img_shape[1] - top_left[0]
+            if bottom_right[1] >= img_shape[0]:
+                visible_height = img_shape[0] - top_left[1]
 
             if visible_height < threshold * bbox[3] or visible_width < threshold * bbox[2]:
-                _bbox = None
+                return None
             else:
                 bottom_right = (bbox[0] + visible_width - 1, bbox[1] + visible_height - 1)
                 _bbox = (top_left, bottom_right)
-        if _bbox is not None:
-            _bbox = np.array([_bbox[0], _bbox[1], _bbox[2], _bbox[3]],
-                            dtype=np.float32)
+
+        _bbox = np.array([_bbox[0], _bbox[1], _bbox[2], _bbox[3]], dtype=np.float32)
         return _bbox
 
     def _get_border(self, border, size):
