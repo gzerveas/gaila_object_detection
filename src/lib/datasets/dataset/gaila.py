@@ -79,14 +79,26 @@ class GAILA(data.Dataset):
             image_ids = os.listdir(_dir)
             image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
             bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
+            raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
             if not os.path.exists(bbox_path):
                 print("ERROR: {} not found!".format(bbox_path))
+                continue
+            if not os.path.exists(raw_path):
+                print("ERROR: {} not found!".format(raw_path))
                 continue
             with open(bbox_path, 'r') as f:
                 lines = f.readlines()
                 bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[:-1]])  # this excludes last (malformed) line (missing 1 object)
+            with open(raw_path, 'r') as f:
+                lines = f.readlines()
+                raw_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines])
             # Exclude the last faulty frame
             bbox_frame = bbox_frame[bbox_frame['step'] != bbox_frame.iloc[-1]['step']]
+            # Drop annotations for objects that are not visible
+            raw_frame = raw_frame[raw_frame['visible'] == True]
+            bbox_index = bbox_frame.set_index('step').index
+            raw_index = raw_frame.set_index('step').index
+            bbox_frame = bbox_frame[bbox_index.isin(raw_index)]
             # Drop annotations for frames not existing on disk
             bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
             # Drop objects in exceptions list

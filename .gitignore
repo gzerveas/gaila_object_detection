@@ -110,4 +110,4 @@ ENV/
 # mypy
 .mypy_cache/
 
-./src/lib/models/networks/*
+./src/lib/models/networks/
