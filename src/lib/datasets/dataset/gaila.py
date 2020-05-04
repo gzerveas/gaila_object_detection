@@ -73,7 +73,6 @@ class GAILA(data.Dataset):
             selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
         else:
             selected_dirs = list(filter(lambda x: not re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
-        selected_dirs = selected_dirs[:1]
         self.all_frames = []  # (frame path, frame dataframe containing annotations)
         for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
             image_ids = os.listdir(_dir)
