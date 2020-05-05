@@ -240,6 +240,12 @@ class Opts(object):
         self.parser.add_argument('--eval_oracle_dep', action='store_true',
                                  help='use ground truth depth.')
 
+        # Test Eval Output
+        self.parser.add_argument('--eval_vis_output', default='./',
+                                 help='Test Vis Output Path')
+        self.parser.add_argument('--video_freq', type=int, default=5,
+                                 help='Video Frequency')
+
     def parse(self, args=''):
         if args == '':
             opt = self.parser.parse_args()

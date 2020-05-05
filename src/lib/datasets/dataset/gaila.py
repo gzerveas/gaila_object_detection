@@ -11,6 +11,7 @@ import random
 import glob
 from tqdm import tqdm
 import re
+import matplotlib.image as mpimg
 import pandas as pd
 import pickle
 
@@ -69,6 +70,7 @@ class GAILA(data.Dataset):
         self.split = split  # which split of the dataset we are looking at
         self.opt = opt
 
+
         if opt.load_annotations is not None:
             load_path = os.path.join(opt.load_annotations, 'frame_annotations_{}.pickle'.format(self.split))
             print("Loading annotations from {} ... ".format(load_path), end="")
@@ -76,6 +78,7 @@ class GAILA(data.Dataset):
                 # The protocol version used is detected automatically
                 self.all_frames = pickle.load(f)
                 print("Done")
+
         else:
             print('Building GAILA {} dataset ...'.format(self.split))
             task_dirs = glob.glob(os.path.join(opt.frames_dir, '*/*'))  # list of all task directories
@@ -151,6 +154,11 @@ class GAILA(data.Dataset):
 
         self.cat_ids = {name: ind for ind, name in enumerate(self.class_name)}
         self.num_samples = len(self.all_frames)
+
+        coco_path = COCO_anno(frameInfoBox=self.all_frames,
+                              class_names=self.class_name,
+                              save_path=opt.eval_vis_output)
+        self.coco = coco.COCO(coco_path)
 
         print('Loaded {} frames/samples for {}'.format(self.num_samples, split))
 
@@ -262,9 +270,88 @@ class GAILA(data.Dataset):
         # result_json = os.path.join(save_dir, "results.json")
         # detections  = self.convert_eval_format(results)
         # json.dump(detections, open(result_json, "w"))
+
+
         self.save_results(results, save_dir)
         coco_dets = self.coco.loadRes('{}/results.json'.format(save_dir))
         coco_eval = COCOeval(self.coco, coco_dets, "bbox")
         coco_eval.evaluate()
         coco_eval.accumulate()
         coco_eval.summarize()
+
+
+def COCO_anno(frameInfoBox, class_names, save_path):
+    ctg_dict = {}
+    for k in range(len(class_names)):
+        ctg_dict[class_names[k]] = k + 1
+
+    coco_file = {}
+    coco_file["info"] = {"description": "Gaila",
+                         "url": "http://cocodataset.org",
+                         "version": "1.0",
+                         "year": 2020,
+                         "contributor": "Isaac",
+                         "date_created": "2020/05/05"}
+
+    coco_file['licenses'] = [{"url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+                              "id": 1,
+                              "name": "Attribution-NonCommercial-ShareAlike License"}]
+    coco_file["images"] = []
+    coco_file["annotations"] = []
+    coco_file["categories"] = []
+
+    for k in range(len(class_names)):
+        ctg_info = {"supercategory": class_names[k],
+                    "id": 1 + k,
+                    "name": class_names[k]}
+        coco_file["categories"].append(ctg_info)
+
+    H = 0
+    W = 0
+    for Info in frameInfoBox:
+        try:
+            img = mpimg.imread(Info[0])
+            H = img.shape[0]
+            W = img.shape[1]
+            break
+        except:
+            continue
+
+    cnt = 1
+    for frameInfo in frameInfoBox:
+        imgId = frameInfo[0].split('.')[0].split('/')[-1]
+        img_info = {"license": 1,
+                    "file_name": imgId + '.png',
+                    "coco_url": "http://images.cocodataset.org/val2017/000000397133.jpg",
+                    "height": H,
+                    "width": W,
+                    "date_captured": "2020-11-14 17:02:52",
+                    "flickr_url": "http://farm7.staticflickr.com/6116/6z.jpg",
+                    "id": int(imgId)}
+        coco_file["images"].append(img_info)
+
+        anno_info = []
+        N = frameInfo[1].shape[0]
+        for k in range(N):
+            ctg_name = frameInfo[1]['name'].iloc[k]
+            tar_bbx = [int(frameInfo[1]['topLeftX'].iloc[k]),
+                       int(frameInfo[1]['topLeftY'].iloc[k]),
+                       int(frameInfo[1]['bottomRightX'].iloc[k] - frameInfo[1]['topLeftX'].iloc[k]),
+                       int(frameInfo[1]['bottomRightY'].iloc[k] - frameInfo[1]['topLeftY'].iloc[k])]
+
+            anno = {"segmentation": [],
+                    "area": tar_bbx[2] * tar_bbx[3],
+                    "iscrowd": 0,
+                    "image_id": int(imgId),
+                    "bbox": tar_bbx,
+                    "category_id": ctg_dict[ctg_name],
+                    "id": cnt}
+            cnt += 1
+            anno_info.append(anno)
+        coco_file["annotations"].extend(anno_info)
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    with open(save_path + '/Gaila_Annotation.json', 'w') as f:
+        json.dump(coco_file, f)
+    return save_path + '/Gaila_Annotation.json'
