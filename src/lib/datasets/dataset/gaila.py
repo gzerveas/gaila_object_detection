@@ -28,6 +28,7 @@ class GAILA(data.Dataset):
     def __init__(self, opt, split):
 
         super(GAILA, self).__init__()
+        self.failed_images = []
 
         ########## KEPT TEMPORARILY ##############
         # self.data_dir = os.path.join(opt.data_dir, 'coco')
@@ -231,7 +232,7 @@ class GAILA(data.Dataset):
         detections = []
         for image_id in all_bboxes:
             for cls_ind in all_bboxes[image_id]:
-                category_id = self._valid_ids[cls_ind - 1]
+                category_id = cls_ind #self._valid_ids[cls_ind - 1]
                 for bbox in all_bboxes[image_id][cls_ind]:
                     bbox[2] -= bbox[0]
                     bbox[3] -= bbox[1]

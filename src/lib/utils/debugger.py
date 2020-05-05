@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 from .ddd_utils import compute_box_3d, project_to_image, draw_box_3d
 
-from datasets.dataset.gaila import GAILA
+# from datasets.dataset.gaila import GAILA
 
 
 class Debugger(object):
@@ -45,7 +45,7 @@ class Debugger(object):
                               (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
                               (255, 0, 0), (0, 0, 255)]
         elif dataset == 'gaila':
-            self.names = GAILA.class_name
+            self.names = gaila_class_name #GAILA.class_name
         elif num_classes == 80 or dataset == 'coco':
             self.names = coco_class_name
         elif num_classes == 20 or dataset == 'pascal':
@@ -430,6 +430,11 @@ class Debugger(object):
                                      lineType=cv2.LINE_AA)
         self.imgs[img_id] = bird_view
 
+
+gaila_class_name = ['Apple', 'Ball', 'Banana', 'Bear', 'Book', 'Bowl', 'Cabinets', 'Chair', 'Clock', 'Counter', 'Cup',
+                    'Dinosaur', 'Dishwasher', 'Doll', 'Door', 'Floor', 'Fork', 'Fridge', 'Head', 'Kitchen_Sink',
+                    'Knife', 'Lamp', 'LeftHand', 'Microwave', 'Oven', 'Pillar', 'Plant', 'RightHand', 'Rug', 'Sink',
+                    'Spoon', 'Stove', 'Table', 'Toy', 'Trash_Bin', 'Window']
 
 kitti_class_name = [
     'p', 'v', 'b'

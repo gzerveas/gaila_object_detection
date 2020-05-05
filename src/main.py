@@ -52,6 +52,8 @@ def main(opt):
     if opt.test:
         _, preds = trainer.val(0, val_loader)
         val_loader.dataset.run_eval(preds, opt.save_dir)
+        print("{} images failed!".format(len(val_loader.dataset.failed_images)))
+        print(val_loader.dataset.failed_images)
         return
 
     train_loader = torch.utils.data.DataLoader(
@@ -96,7 +98,8 @@ def main(opt):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
     logger.close()
-
+    print("{} images failed!".format(len(train_loader.dataset.failed_images)))
+    print(train_loader.dataset.failed_images)
 
 if __name__ == '__main__':
     opt = Opts().parse()

@@ -40,7 +40,13 @@ class GAILA_CTDetDataset(data.Dataset):
         num_objs = min(len(anns), self.max_objs)
 
         img = cv2.imread(img_path)
-        img_shape = img.shape
+        try:
+            img_shape = img.shape
+            self.last_img = img
+        except AttributeError:
+            print("Image '{}' failed!!!".format(img_path))
+            self.failed_images.append(img_path)
+            img = self.last_img
 
         height, width = img.shape[0], img.shape[1]
         c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
