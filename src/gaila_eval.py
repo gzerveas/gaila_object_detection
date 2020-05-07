@@ -155,7 +155,7 @@ def plot_bbox_wrong(img, name, detector_bbox):
 def plot_bbox_right(img, name, detector_bbox, targetBoxes):
     IOU = get_IOU(detector_bbox, targetBoxes)
 
-    txt = '{} p={:.1f} iou={:.3f}'.format(name, detector_bbox[4], IOU)
+    txt = '{} p={:.3f} iou={:.2f}'.format(name, detector_bbox[4], IOU)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
     c = (0, 255, 0)
@@ -171,18 +171,15 @@ def plot_bbox_right(img, name, detector_bbox, targetBoxes):
 def IOU(boxA, boxB):
     interAx = max(boxA[0], boxB[0])
     interAy = max(boxA[1], boxB[1])
-    interBx = max(boxA[2], boxB[2])
-    interBy = max(boxA[3], boxB[3])
+    interBx = min(boxA[2], boxB[2])
+    interBy = min(boxA[3], boxB[3])
 
-    interArea = max(0, interBx - interAx + 1) * max(0, interBy - interAy + 1)
-    A_Area = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
-    B_Area = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
+    interArea = max(0, interBx - interAx) * max(0, interBy - interAy)
+    A_Area = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    B_Area = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
 
     iou = interArea / float(A_Area + B_Area - interArea)
-    if iou > 1.0:
-        return 0
-    else:
-        return iou
+    return iou
 
 def get_IOU(boxA, boxBs):
     iou = []
