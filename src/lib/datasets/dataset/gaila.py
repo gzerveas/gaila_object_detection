@@ -286,11 +286,11 @@ def COCO_anno(frameInfoBox, class_names, save_path):
         ctg_dict[class_names[k]] = k + 1
 
     coco_file = {}
-    coco_file["info"] = {"description": "Gaila",
-                         "url": "http://cocodataset.org",
+    coco_file["info"] = {"description": "GAILA",
+                         "url": "dummy",
                          "version": "1.0",
                          "year": 2020,
-                         "contributor": "Isaac",
+                         "contributor": "dummy",
                          "date_created": "2020/05/05"}
 
     coco_file['licenses'] = [{"url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",

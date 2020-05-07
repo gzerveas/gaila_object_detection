@@ -1,3 +1,14 @@
+"""
+python3  ./gaila_eval.py gaila_ctdet --exp_id gaila_evalvis \
+                                     --gpus 0 --vis_thresh 0.4 \
+                                     --eval_vis_output ./TestEval/ \
+                                     --load_annotations ~/scratch \
+                                     --data_dir ~/scratch \
+                                     --arch resdcn_18 --batch_size 32 --master_batch -1 \
+                                     --load_model ../exp/gaila_ctdet/gaila_simplenet/model_last.pth
+
+python gaila_eval.py gaila_ctdet --exp_id TEST_gaila_resdcn18_fpt400_ep10 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --load_annotations ../data --batch_size 32 --num_workers 8 --master_batch -1 --arch resdcn_18 --load_model ../exp/gaila_ctdet/TRAIN_gaila_resdcn18_fpt400_ep10/model_last.pth
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -66,7 +77,10 @@ def test(opt):
             Bar.suffix = Bar.suffix + '|{} {:.3f} '.format(t, avg_time_stats[t].avg)
         bar.next()
     bar.finish()
-    create_videos(video_path, opt.video_freq)
+    try:
+        create_videos(video_path, opt.video_freq)
+    except Exception as X:
+        print(X)
     dataset.run_eval(results, opt.save_dir)
 
 

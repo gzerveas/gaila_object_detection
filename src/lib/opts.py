@@ -29,6 +29,8 @@ class Opts(object):
                                  help='Path of .txt file containing class names, 1 per line. Otherwise class names are detected from annotations.')
         self.parser.add_argument('--save_classnames_to', required=False,
                                  help='Path of .txt file where to write detected class names, 1 per line')
+        self.parser.add_argument('--image_out', default='output_dump',
+                                 help='Path of root directory to write output image files.')
         self.parser.add_argument('--exp_id', default='default')
         self.parser.add_argument('--test', action='store_true')
         self.parser.add_argument('--debug', type=int, default=0,

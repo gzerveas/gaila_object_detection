@@ -28,7 +28,7 @@ from datasets.dataset.gaila import GAILA
 
 def Gaila_Detection(Gaila_path, Task_ids, Scene_ids, MODEL_PATH, SampleRate=1, Vis_thresh=0.3):
     
-    Output_path= './Output/'
+    out_path= './Output/'
     TASK = 'ctdet'
     opt  = opts().init('{} --load_model {} --vis_thresh {}'.format(TASK, MODEL_PATH, Vis_thresh).split(' '))
     detector = detector_factory[opt.task](opt)
@@ -38,7 +38,7 @@ def Gaila_Detection(Gaila_path, Task_ids, Scene_ids, MODEL_PATH, SampleRate=1, V
         for task in Task_ids:
             bbox_path  = Gaila_path+'/bounds/'+str(scene)+'_task'+str(task)+'_bounds.txt'
             bbox_info  = get_target_bbox(bbox_path)
-            save_path  = Output_path+'/DectectionResults/'+str(scene)+'/'+str(scene)+'_task'+str(task)+'/'
+            save_path  = out_path+'/DectectionResults/'+str(scene)+'/'+str(scene)+'_task'+str(task)+'/'
             coco_target= Annotate_BoundsInfo(bbox_info, class_names, save_path)
             if not os.path.exists(out_path):
                 os.makedirs(out_path)
@@ -100,7 +100,15 @@ def Gaila_Detection(Gaila_path, Task_ids, Scene_ids, MODEL_PATH, SampleRate=1, V
 
 
 if __name__=='__main__':
-
+"""
+python3  ./gaila_eval.py gaila_ctdet --exp_id gaila_evalvis \
+                                     --gpus 0 --vis_thresh 0.4 \
+                                     --eval_vis_output ./TestEval/ \
+                                     --load_annotations ~/scratch \
+                                     --data_dir ~/scratch \
+                                     --arch resdcn_18 --batch_size 32 --master_batch -1 \
+                                     --load_model ../exp/gaila_ctdet/gaila_simplenet/model_last.pth
+"""
 	parser = argparse.ArgumentParser()
     parser.add_argument("-Gaila_path",  dest="Gaila_path",  default=None, help="Path to Gaila Data File.")
     parser.add_argument("-MODEL_PATH",  dest="MODEL_PATH",  default=None, help="Path to Model.")
