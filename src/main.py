@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 
 import _init_paths
-
 import os
 
 import torch
@@ -14,6 +13,7 @@ from models.data_parallel import DataParallel
 from logger import Logger
 from datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
+from utils.utils import count_parameters
 
 
 def main(opt):
@@ -36,7 +36,11 @@ def main(opt):
         model, optimizer, start_epoch = load_model(
             model, opt.load_model, optimizer, opt.resume, opt.lr, opt.lr_step)
 
+    print("Model:")
     print(model)
+    print("Total number of parameters: {}".format(count_parameters(model)))
+    print("Trainable parameters: {}".format(count_parameters(model, trainable=True)))
+
 
     Trainer = train_factory[opt.task]
     trainer = Trainer(opt, model, optimizer)

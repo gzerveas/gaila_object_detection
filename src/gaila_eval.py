@@ -21,12 +21,11 @@ import cv2
 import numpy as np
 import time
 from progress.bar import Bar
-import torch
 import matplotlib.image as mpimg
 
 from opts import Opts
 from logger import Logger
-from utils.utils import AverageMeter
+from utils.utils import AverageMeter, count_parameters
 from datasets.dataset_factory import dataset_factory
 from detectors.detector_factory import detector_factory
 
@@ -43,6 +42,11 @@ def test(opt):
     split = 'test'
     dataset = Dataset(opt, split)
     detector = Detector(opt)
+
+    print("Model:")
+    print(detector)
+    print("Total number of parameters: {}".format(count_parameters(detector)))
+    print("Trainable parameters: {}".format(count_parameters(detector, trainable=True)))
 
     results = {}
     video_path = {}
