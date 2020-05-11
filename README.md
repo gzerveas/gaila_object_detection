@@ -1,11 +1,11 @@
 # Object Localization for Virtual Reality Environments
-This repo contains the code for object detection in VR environments. The method is based on CenterNet and is applied on GAILA dataset.
-CenterNet paper:
+This repo contains the code for object detection in VR environments. The method is based on CenterNet and is applied on GAILA dataset.  
+
+
+
+> CenterNet paper:
 > [**Objects as Points**](http://arxiv.org/abs/1904.07850),            
 > Xingyi Zhou, Dequan Wang, Philipp Kr&auml;henb&uuml;hl,              
-
-
-George Zerveas, Reza Esfandiarpoor, Zhizhong Chen
 
 ## Installation
 
