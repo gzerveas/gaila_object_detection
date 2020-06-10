@@ -8,6 +8,7 @@ python3  ./gaila_eval.py gaila_ctdet --exp_id gaila_evalvis \
                                      --load_model ../exp/gaila_ctdet/gaila_simplenet/model_last.pth
 
 python gaila_eval.py gaila_ctdet --exp_id TEST_gaila_resdcn18_fpt400_ep10 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --load_annotations ../data  --arch resdcn_18 --load_model ../exp/gaila_ctdet/TRAIN_gaila_resdcn18_fpt400_ep10/model_last.pth
+python gaila_eval.py gaila_ctdet --exp_id TEST_trainVS1_evalVS2_resdcn18 --vis_thresh 0.2 --eval_vis_output ../exp/TEST_trainVS1_evalVS2_resdcn18/output_dump/  --classnames_from ../reduced_classnames.txt --load_annotations ../data/eval_4_2b_task1 --load_predictions --arch resdcn_18 --load_model ../exp/gaila_ctdet/gaila_trainVS1_evalVS2_resdcn18/model_best.pth
 python gaila_eval.py gaila_ctdet --exp_id TEST_trainVS1_evalVS2_resdcn18 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --eval_pattern "4_2b_task1" --save_annotations ../data/eval_4_2b_task1  --arch resdcn_18 --load_model ../exp/gaila_ctdet/gaila_trainVS1_evalVS2_resdcn18/model_best.pth
 python gaila_eval.py gaila_ctdet --exp_id TEST_trainVS1_evalVS2_resdcn18 --vis_thresh 0.2 --eval_vis_output ../exp/output_dump/ --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --eval_pattern "4_2b_task1" --classnames_from ../reduced_classnames.txt --save_annotations ../data/eval_4_2b_task1 --arch resdcn_18 --load_model ../exp/gaila_ctdet/gaila_trainVS1_evalVS2_resdcn18/model_best.pth
 """

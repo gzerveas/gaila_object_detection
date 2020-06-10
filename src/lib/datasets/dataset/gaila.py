@@ -19,9 +19,11 @@ import torch.utils.data as data
 
 
 class GAILA(data.Dataset):
-    ########## NEED TO COMPUTE ##############
+
+    # Canonical setting
     num_classes = 36  # class variable is used if no instance member variable is set
     class_exceptions = ['Wall', 'Ceiling']
+    ########## NEED TO COMPUTE ##############
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
     std = np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
@@ -29,32 +31,11 @@ class GAILA(data.Dataset):
     def __init__(self, opt, split):
 
         super(GAILA, self).__init__()
-        self.failed_images = []
+        self.failed_images = set([])
         self.max_objs = 64  # 128
         # threshold of size proportion in x, y that the target bounding boxes must have within the image frame in order to be kept
         self.threshold = 0.3
         ########## KEPT TEMPORARILY ##############
-        # self.data_dir = os.path.join(opt.data_dir, 'coco')
-        # self.img_dir = os.path.join(self.data_dir, '{}2017'.format(split))
-        # if split == 'test':
-        #     self.annot_path = os.path.join(
-        #         self.data_dir, 'annotations',
-        #         'image_info_test-dev2017.json').format(split)
-        # else:
-        #     if opt.task == 'exdet':
-        #         self.annot_path = os.path.join(
-        #             self.data_dir, 'annotations',
-        #             'instances_extreme_{}2017.json').format(split)
-        #     else:
-        #         self.annot_path = os.path.join(
-        #             self.data_dir, 'annotations',
-        #             'instances_{}2017.json').format(split)
-
-        # self.class_name = ['__background__', 'nothing']
-        # self._valid_ids = [0]
-        # self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
-        # self.voc_color = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) \
-        #                   for v in range(1, self.num_classes + 1)]
         self._data_rng = np.random.RandomState(123) # GEO: needed with no_color_aug
         self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571], # GEO: needed with no_color_aug
                                  dtype=np.float32)
@@ -110,16 +91,26 @@ class GAILA(data.Dataset):
 
             self.all_frames = []  # (frame path, frame dataframe containing annotations)
             for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
-                image_ids = os.listdir(_dir)
-                image_ids = [int(img.split('.')[0]) for img in image_ids]  # list of image IDs
+                image_paths = os.listdir(_dir)  # base file names of all frame files corresponding to task directory
+                image_ids = []  # list of image IDs, by cutting extension from path
+                for img in image_paths:
+                    full_path = os.path.join(_dir, img)
+                    if os.stat(full_path).st_size > 10:  # check that the frame file is not corrupt (size > 10 bytes)
+                        image_ids.append(int(img.split('.')[0]))
+                    else:
+                        self.failed_images.add(full_path)
+                # image_ids = [int(img.split('.')[0]) for img in image_paths if (os.stat(img).st_size > 10)]  # list of image IDs, by cutting extension
+
                 bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
                 raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
+                # Check that data file exists
                 if not os.path.exists(bbox_path):
                     print("ERROR: {} not found!".format(bbox_path))
                     continue
                 if not os.path.exists(raw_path):
                     print("ERROR: {} not found!".format(raw_path))
                     continue
+
                 with open(bbox_path, 'r') as f:
                     lines = f.readlines()
                     bbox_frame = pd.DataFrame([json.loads(line.rstrip()) for line in lines[:-1]])  # this excludes last (malformed) line (missing 1 object)

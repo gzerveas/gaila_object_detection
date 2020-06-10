@@ -45,7 +45,7 @@ class GAILA_CTDetDataset(data.Dataset):
             self.last_img = img
         except AttributeError:
             print("Image '{}' failed!!!".format(img_path))
-            self.failed_images.append(img_path)
+            self.failed_images.add(img_path)
             img = self.last_img
 
         height, width = img.shape[0], img.shape[1]

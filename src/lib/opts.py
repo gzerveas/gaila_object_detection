@@ -57,8 +57,8 @@ class Opts(object):
                                       'Reloaded the optimizer parameter and '
                                       'set load_model to model_last.pth '
                                       'in the exp dir if load_model is empty.')
-        self.parser.add_argument('--data_dir', default=os.path.join(os.path.dirname(__file__), '..', '..', 'data'),
-                                 help='path to directory containing data for training and validation')
+        self.parser.add_argument('--root_dir', default=os.path.join(os.path.dirname(__file__), '..', '..'),
+                                 help='path to root directory where all output (logs, models, predictions etc) will be stored')
         # system
         self.parser.add_argument('--gpus', default='0',
                                  help='-1 for CPU, use comma for multiple gpus')
@@ -251,7 +251,7 @@ class Opts(object):
                                  help='use ground truth depth.')
 
         # Test Eval Output
-        self.parser.add_argument('--eval_vis_output', default='./',
+        self.parser.add_argument('--eval_vis_output',
                                  help='Test Vis Output Path')
         self.parser.add_argument('--video_freq', type=int, default=5,
                                  help='Video Frequency')
@@ -300,12 +300,12 @@ class Opts(object):
             opt.chunk_sizes.append(slave_chunk_size)
         print('training chunk_sizes:', opt.chunk_sizes)
 
-        opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
-        # opt.data_dir = os.path.join(opt.root_dir, 'data')
         opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
         opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
         opt.debug_dir = os.path.join(opt.save_dir, 'debug')
         print('The output will be saved to ', opt.save_dir)
+        if opt.eval_vis_output is None:
+            opt.eval_vis_output = os.path.join(opt.save_dir, 'output_dump/')
 
         if opt.resume and opt.load_model == '':
             model_path = opt.save_dir[:-4] if opt.save_dir.endswith('TEST') \

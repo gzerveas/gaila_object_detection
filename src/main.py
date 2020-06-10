@@ -1,9 +1,17 @@
+"""
+python main.py gaila_ctdet --exp_id TRAIN_trainVS2_evalVS2_resdcn18_fpt800 --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --train_pattern "_2._task[^1]" --eval_pattern "_2b_task1" --classnames_from ../reduced_classnames.txt --save_annotations ~/scratch/TRAIN_trainVS2_evalVS1_resdcn18_fpt800 --arch resdcn_18 --batch_size 32 --master_batch -1 --lr 1.25e-4 --gpus 0 --num_workers 8  --frames_per_task 800 --resume --num_epochs 30
+python main.py gaila_ctdet --exp_id TRAIN_trainVS2_evalVS1_resdcn18_fpt800 --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --train_pattern "_2._" --eval_pattern "_1b_task1" --classnames_from ../reduced_classnames.txt --save_annotations ~/scratch/TRAIN_trainVS2_evalVS1_resdcn18_fpt800 --arch resdcn_18 --batch_size 32 --master_batch -1 --lr 1.25e-4 --gpus 0 --num_workers 8  --frames_per_task 800 --resume --num_epochs 30
+python main.py gaila_ctdet --exp_id TRAIN_trainVS2_evalVS1_resdcn18_fpt800  --classnames_from ../reduced_classnames.txt --load_annotations ~/scratch/trainVS2_evalVS1/ --arch resdcn_18 --batch_size 32 --master_batch -1 --lr 1.25e-4 --gpus 0 --num_workers 8  --frames_per_task 800 --resume
+python main.py gaila_ctdet --exp_id TRAIN_trainMIX_evalVS2_resdcn18_fpt800 --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --train_pattern "(_1._)|(_task[^1]_)|(_2[ac]_task1)" --eval_pattern "_2b_task1" --classnames_from ../reduced_classnames.txt --save_annotations ~/scratch/TRAIN_trainMIX_evalVS2_resdcn18_fpt800 --arch resdcn_18 --batch_size 32 --master_batch -1 --lr 1.25e-4 --gpus 0 --num_workers 8  --frames_per_task 800 --resume --num_epochs 30
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import _init_paths
 import os
+import json
 
 import torch
 import torch.utils.data
@@ -72,6 +80,16 @@ def main(opt):
         drop_last=True
     )
 
+    # Report failed images
+    failed_images = list(train_loader.dataset.failed_images | val_loader.dataset.failed_images)
+    if len(failed_images):
+        print("{} images failed!".format(len(failed_images)))
+        dump_path = os.path.join(opt.save_dir, 'failed_images.json')
+        with open(dump_path, 'w') as f:
+            json.dump(failed_images, f, sort_keys=True, indent=4, separators=(',', ': '))
+        print("Failed image paths saved in: {}".format(dump_path))
+
+
     print('Starting training...')
     best = 1e10
     for epoch in range(start_epoch + 1, opt.num_epochs + 1):
@@ -105,8 +123,7 @@ def main(opt):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
     logger.close()
-    print("{} images failed!".format(len(train_loader.dataset.failed_images)))
-    print(train_loader.dataset.failed_images)
+
 
 if __name__ == '__main__':
     opt = Opts().parse()
