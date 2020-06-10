@@ -7,7 +7,9 @@ python3  ./gaila_eval.py gaila_ctdet --exp_id gaila_evalvis \
                                      --arch resdcn_18 --batch_size 32 --master_batch -1 \
                                      --load_model ../exp/gaila_ctdet/gaila_simplenet/model_last.pth
 
-python gaila_eval.py gaila_ctdet --exp_id TEST_gaila_resdcn18_fpt400_ep10 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --load_annotations ../data --batch_size 32 --num_workers 8 --master_batch -1 --arch resdcn_18 --load_model ../exp/gaila_ctdet/TRAIN_gaila_resdcn18_fpt400_ep10/model_last.pth
+python gaila_eval.py gaila_ctdet --exp_id TEST_gaila_resdcn18_fpt400_ep10 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --load_annotations ../data  --arch resdcn_18 --load_model ../exp/gaila_ctdet/TRAIN_gaila_resdcn18_fpt400_ep10/model_last.pth
+python gaila_eval.py gaila_ctdet --exp_id TEST_trainVS1_evalVS2_resdcn18 --vis_thresh 0.4 --eval_vis_output ../exp/output_dump/ --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --eval_pattern "4_2b_task1" --save_annotations ../data/eval_4_2b_task1  --arch resdcn_18 --load_model ../exp/gaila_ctdet/gaila_trainVS1_evalVS2_resdcn18/model_best.pth
+python gaila_eval.py gaila_ctdet --exp_id TEST_trainVS1_evalVS2_resdcn18 --vis_thresh 0.2 --eval_vis_output ../exp/output_dump/ --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/ --eval_pattern "4_2b_task1" --classnames_from ../reduced_classnames.txt --save_annotations ../data/eval_4_2b_task1 --arch resdcn_18 --load_model ../exp/gaila_ctdet/gaila_trainVS1_evalVS2_resdcn18/model_best.pth
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -22,6 +24,7 @@ import numpy as np
 import time
 from progress.bar import Bar
 import matplotlib.image as mpimg
+import pickle
 
 from opts import Opts
 from logger import Logger
@@ -33,22 +36,27 @@ from detectors.detector_factory import detector_factory
 def test(opt):
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
 
+    split = 'test'
+
     Dataset = dataset_factory['gaila']
-    opt = Opts().update_dataset_info_and_set_heads(opt, Dataset)
+    dataset = Dataset(opt, split)
+
+    opt = Opts().update_dataset_info_and_set_heads(opt, dataset)
     print(opt)
     Logger(opt)
-    Detector = detector_factory['ctdet']
 
-    split = 'test'
-    dataset = Dataset(opt, split)
-    detector = Detector(opt)
+    if opt.load_predictions:
+        load_path = os.path.join(opt.save_dir, 'results.pickle')
+        print("Loading detections from {} ... ".format(load_path), end="")
+        with open(load_path, 'rb') as f:
+            # The protocol version used is detected automatically
+            results = pickle.load(f)
+            print("Done")
+    else:
+        Detector = detector_factory['ctdet']
+        detector = Detector(opt)
+        results = {}
 
-    print("Model:")
-    print(detector)
-    print("Total number of parameters: {}".format(count_parameters(detector)))
-    print("Trainable parameters: {}".format(count_parameters(detector, trainable=True)))
-
-    results = {}
     video_path = {}
     metrics_pool = {}
     num_iters = len(dataset.all_frames)
@@ -64,10 +72,11 @@ def test(opt):
         except:
             continue
 
-        ret = detector.run(img_path)
+        if not opt.load_predictions:
+            ret = detector.run(img_path)
+            results[img_id] = ret['results']
 
-        results[img_id] = ret['results']
-        save_path, save_file, metrics = save_eval_vis(detRes=ret['results'], frameInfo=dataset.all_frames[ind],
+        save_path, save_file, metrics = save_eval_vis(detRes=results[img_id], frameInfo=dataset.all_frames[ind],
                                                       class_names=dataset.class_name, Vis_thresh=opt.vis_thresh,
                                                       save_path=opt.eval_vis_output)
         if save_path not in video_path:
@@ -80,17 +89,27 @@ def test(opt):
         else:
             metrics_pool[save_path].append(metrics)
 
-        Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(
-            ind, num_iters, total=bar.elapsed_td, eta=bar.eta_td)
-        for t in avg_time_stats:
-            avg_time_stats[t].update(ret[t])
-            Bar.suffix = Bar.suffix + '|{} {:.3f} '.format(t, avg_time_stats[t].avg)
+        Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(ind, num_iters, total=bar.elapsed_td, eta=bar.eta_td)
+        if not opt.load_predictions:
+            for t in avg_time_stats:
+                avg_time_stats[t].update(ret[t])
+                Bar.suffix = Bar.suffix + '|{} {:.3f} '.format(t, avg_time_stats[t].avg)
         bar.next()
     bar.finish()
+
+    # if not opt.load_predictions:
+    #     write_path = os.path.join(opt.save_dir, 'detections.pickle')
+    #     print("Serializing detections into {} ... ".format(write_path), end="")
+    #     with open(write_path, 'wb') as f:
+    #         pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
+    #     print("Done")
+
     create_videos(video_path, opt.video_freq)
     generate_basic_metrics(metrics_pool, opt.eval_vis_output)
-    dataset.run_eval(results, opt.save_dir)
+    # This uses the COCO API to compute and present performance metrics, and dumps detections as json and pickle (if not loaded)
+    dataset.run_eval(results, opt.save_dir, store_pickle=(not opt.load_predictions))
 
+    return
 
 
 def save_eval_vis(detRes, frameInfo, class_names, Vis_thresh, save_path):

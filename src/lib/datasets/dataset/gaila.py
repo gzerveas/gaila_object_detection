@@ -20,7 +20,7 @@ import torch.utils.data as data
 
 class GAILA(data.Dataset):
     ########## NEED TO COMPUTE ##############
-    num_classes = 36
+    num_classes = 36  # class variable is used if no instance member variable is set
     class_exceptions = ['Wall', 'Ceiling']
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
@@ -30,7 +30,9 @@ class GAILA(data.Dataset):
 
         super(GAILA, self).__init__()
         self.failed_images = []
-
+        self.max_objs = 64  # 128
+        # threshold of size proportion in x, y that the target bounding boxes must have within the image frame in order to be kept
+        self.threshold = 0.3
         ########## KEPT TEMPORARILY ##############
         # self.data_dir = os.path.join(opt.data_dir, 'coco')
         # self.img_dir = os.path.join(self.data_dir, '{}2017'.format(split))
@@ -47,12 +49,12 @@ class GAILA(data.Dataset):
         #         self.annot_path = os.path.join(
         #             self.data_dir, 'annotations',
         #             'instances_{}2017.json').format(split)
-        self.max_objs = 64  # 128
-        self.class_name = ['__background__', 'nothing']
-        self._valid_ids = [0]
-        self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
-        self.voc_color = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) \
-                          for v in range(1, self.num_classes + 1)]
+
+        # self.class_name = ['__background__', 'nothing']
+        # self._valid_ids = [0]
+        # self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
+        # self.voc_color = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) \
+        #                   for v in range(1, self.num_classes + 1)]
         self._data_rng = np.random.RandomState(123) # GEO: needed with no_color_aug
         self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571], # GEO: needed with no_color_aug
                                  dtype=np.float32)
@@ -63,13 +65,19 @@ class GAILA(data.Dataset):
         ], dtype=np.float32)
         # self.mean = np.array([0.485, 0.456, 0.406], np.float32).reshape(1, 1, 3)
         # self.std = np.array([0.229, 0.224, 0.225], np.float32).reshape(1, 1, 3)
-        self.threshold = 0.3  # threshold to filter the bounding boxes
+
         self.img_shape = [960, 540]  # size of each frame
         ########## KEPT TEMPORARILY ##############
 
         self.split = split  # which split of the dataset we are looking at
         self.opt = opt
 
+        if opt.classnames_from:
+            self.class_name = sorted([line.rstrip() for line in open(opt.classnames_from).readlines()])
+            print("{} classes in file '{}': {}".format(len(self.class_name), opt.classnames_from, self.class_name))
+            class_names_set = set(self.class_name)
+        else:
+            self.class_name = None
 
         if opt.load_annotations is not None:
             load_path = os.path.join(opt.load_annotations, 'frame_annotations_{}.pickle'.format(self.split))
@@ -81,14 +89,24 @@ class GAILA(data.Dataset):
 
         else:
             print('Building GAILA {} dataset ...'.format(self.split))
+            # Select directories for training and evaluation
             task_dirs = glob.glob(os.path.join(opt.frames_dir, '*/*'))  # list of all task directories
             if len(task_dirs) == 0:
                 raise Exception('No task directories found using: {}'.format(os.path.join(opt.frames_dir, '*/*')))
 
-            if self.split != 'train':
-                selected_dirs = list(filter(lambda x: re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+            if opt.eval_pattern is None:
+                # by default evaluate on half the tasks of an given scene (configuration) for both visual styles (blocky, photorealistic)
+                eval_pattern = r'_1c_task[123]|_2c_task[456]'
             else:
-                selected_dirs = list(filter(lambda x: not re.search(r'_1c_task[123]|_2c_task[456]', x), task_dirs))
+                eval_pattern = opt.eval_pattern
+
+            if self.split != 'train':
+                selected_dirs = list(filter(lambda x: re.search(eval_pattern, x), task_dirs))
+            else:  # for training set
+                if opt.train_pattern is None:  # use the complement of eval set
+                    selected_dirs = list(filter(lambda x: not re.search(eval_pattern, x), task_dirs))
+                else:
+                    selected_dirs = list(filter(lambda x: re.search(opt.train_pattern, x), task_dirs))
 
             self.all_frames = []  # (frame path, frame dataframe containing annotations)
             for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
@@ -117,8 +135,11 @@ class GAILA(data.Dataset):
                 bbox_frame = bbox_frame[bbox_index.isin(raw_index)]
                 # Drop annotations for frames not existing on disk
                 bbox_frame = bbox_frame[bbox_frame['step'].isin(image_ids)]
-                # Drop objects in exceptions list
-                bbox_frame = bbox_frame[~bbox_frame.name.isin(GAILA.class_exceptions)]
+                # Drop objects in exceptions list or not in pre-specified class name list
+                if self.class_name is None:
+                    bbox_frame = bbox_frame[~bbox_frame.name.isin(GAILA.class_exceptions)]
+                else:
+                    bbox_frame = bbox_frame[bbox_frame.name.isin(class_names_set)]
                 bbox_frame = list(bbox_frame.groupby('step'))  # list of step/frame groups
                 random.shuffle(bbox_frame)
                 selected_frames = bbox_frame[:opt.frames_per_task]
@@ -126,6 +147,8 @@ class GAILA(data.Dataset):
                 self.all_frames.extend(selected_frames)
 
             if opt.save_annotations is not None:
+                if not os.path.exists(opt.save_annotations):
+                    os.makedirs(opt.save_annotations)
                 write_path = os.path.join(opt.save_annotations, 'frame_annotations_{}.pickle'.format(self.split))
                 print("Serializing annotations into {} ... ".format(write_path), end="")
                 with open(write_path, 'wb') as f:
@@ -135,7 +158,7 @@ class GAILA(data.Dataset):
 
         random.shuffle(self.all_frames)
 
-        if opt.classnames_from is None:
+        if opt.classnames_from is None:  # Infer classes from loaded annotations
             dataframes = pd.concat(annotations for path, annotations in self.all_frames)
             self.class_name = sorted(list(dataframes.name.unique()))
             print("{} classes extracted: {}".format(len(self.class_name), self.class_name))
@@ -143,18 +166,13 @@ class GAILA(data.Dataset):
                 with open(opt.save_classnames_to, 'w') as f:
                     for name in self.class_name:
                         f.write(name + '\n')
-        else:
-            # for i in range(len(opt.bounds_dir)):  # find common path part
-            #     if opt.frames_dir[i] != opt.bounds_dir[i]:
-            #         break
-            # gaila_dir = opt.bounds_dir[:i]
-            # class_name_path = os.path.join(gaila_dir, 'possible_labels.txt')
-            self.class_name = sorted([line.rstrip() for line in open(opt.class_name_path).readlines()])
-            print("{} classes in file '{}': {}".format(len(self.class_name), opt.class_name_path, self.class_name))
 
         self.cat_ids = {name: ind for ind, name in enumerate(self.class_name)}
+        self.num_classes = len(self.class_name)
         self.num_samples = len(self.all_frames)
 
+        # Converts dataset (image name, bounding boxes and class names of objects) to COCO format and dumps to JSON
+        # This is used eventually for computing performance metrics
         coco_path = COCO_anno(frameInfoBox=self.all_frames,
                               class_names=self.class_name,
                               save_path=opt.eval_vis_output)
@@ -236,7 +254,6 @@ class GAILA(data.Dataset):
         return float("{:.2f}".format(x))
 
     def convert_eval_format(self, all_bboxes):
-        # import pdb; pdb.set_trace()
         detections = []
         for image_id in all_bboxes:
             for cls_ind in all_bboxes[image_id]:
@@ -263,18 +280,30 @@ class GAILA(data.Dataset):
         return self.num_samples
 
     def save_results(self, results, save_dir):
+        """Converts model detections to custom format and dumps to JSON file"""
         json.dump(self.convert_eval_format(results),
                   open('{}/results.json'.format(save_dir), 'w'))
 
-    def run_eval(self, results, save_dir):
-        # result_json = os.path.join(save_dir, "results.json")
-        # detections  = self.convert_eval_format(results)
-        # json.dump(detections, open(result_json, "w"))
+    @staticmethod
+    def pickle_results(results, save_dir):
+        """This is used to enable drawing bounding boxes and computing other metrics in gaila_eval.py"""
+        write_path = os.path.join(save_dir, 'results.pickle')
+        print("Serializing detections into {} ... ".format(write_path), end="")
+        with open(write_path, 'wb') as f:
+            pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
+        print("Done")
 
+    def run_eval(self, results, save_dir, store_pickle=True):
+        """Converts detections to COCO format and runs COCO API evaluation"""
 
+        if store_pickle:
+            self.pickle_results(results, save_dir)
+
+        # this is done only because there seems to be no other way to initialize COCOeval than load from file
         self.save_results(results, save_dir)
-        coco_dets = self.coco.loadRes('{}/results.json'.format(save_dir))
-        coco_eval = COCOeval(self.coco, coco_dets, "bbox")
+        coco_detections = self.coco.loadRes('{}/results.json'.format(save_dir))
+        # Uses COCO API to calculate and present performance metrics
+        coco_eval = COCOeval(self.coco, coco_detections, "bbox")
         coco_eval.evaluate()
         coco_eval.accumulate()
         coco_eval.summarize()
@@ -322,11 +351,11 @@ def COCO_anno(frameInfoBox, class_names, save_path):
         imgId = frameInfo[0].split('.')[0].split('/')[-1]
         img_info = {"license": 1,
                     "file_name": imgId + '.png',
-                    "coco_url": "http://images.cocodataset.org/val2017/000000397133.jpg",
+                    "coco_url": "dummy_url",
                     "height": H,
                     "width": W,
-                    "date_captured": "2020-11-14 17:02:52",
-                    "flickr_url": "http://farm7.staticflickr.com/6116/6z.jpg",
+                    "date_captured": "2020-02-02 02:02:02",
+                    "flickr_url": "dummy_url",
                     "id": int(imgId)}
         coco_file["images"].append(img_info)
 

@@ -15,18 +15,26 @@ class Opts(object):
                                  help='gaila_ctdet | ctdet | ddd | multi_pose | exdet')
         self.parser.add_argument('--dataset', default='gaila',
                                  help='gaila | coco | kitti | coco_hp | pascal')
-        self.parser.add_argument('--frames_per_task', type=int, default=200,
-                                 help='Number of sample frames to keep for each task (all frames for a task are contained in a single folder)')
+        self.parser.add_argument('--frames_per_task', type=int, default=1000000,
+                                 help='Number of frames to sample from each task (all frames for a task are contained in a single folder). By default all found frames are kept')
         self.parser.add_argument('--bounds_dir',
                                  help='Path of root directory containing bounding boxes .txt files.')
         self.parser.add_argument('--frames_dir',
                                  help='Path of root directory containing frame files (images).')
+        self.parser.add_argument('--train_pattern', required=False,
+                                 help="""Pattern (regex) for matching file names to be included in the training set. E.g. '_1[abc]_' """)
+        self.parser.add_argument('--eval_pattern', required=False,
+                                 help="""Pattern (regex) for matching file names to be included in the evaluation set. E.g. '_2[abc]_' """)
         self.parser.add_argument('--save_annotations',
                                  help='Path of directory where to serialize frame annotations')
         self.parser.add_argument('--load_annotations',
                                  help='Path of directory containing serialized frame annotations')
+        self.parser.add_argument('--load_predictions', action='store_true',
+                                 help="""If set, uses existing saved predictions file in experiment directory
+                                  to draw bounding boxes and show performance metrics, instead of running inference""")
         self.parser.add_argument('--classnames_from', required=False,
-                                 help='Path of .txt file containing class names, 1 per line. Otherwise class names are detected from annotations.')
+                                 help="""Path of .txt file containing class names, 1 per line. 
+                                 Otherwise class names are detected from annotations, but this may fail if evaluating on a set containing less object classes than the training set""")
         self.parser.add_argument('--save_classnames_to', required=False,
                                  help='Path of .txt file where to write detected class names, 1 per line')
         self.parser.add_argument('--image_out', default='output_dump',
@@ -37,7 +45,7 @@ class Opts(object):
                                  help='level of visualization.'
                                       '1: only show the final detection results'
                                       '2: show the network output features'
-                                      '3: use matplot to display'  # useful when lunching training with ipython notebook
+                                      '3: use matplot to display'  # useful when launching training with ipython notebook
                                       '4: save all visualizations to disk')
         self.parser.add_argument('--demo', default='',
                                  help='path to image/ image folders/ video. '
@@ -306,6 +314,9 @@ class Opts(object):
         return opt
 
     def update_dataset_info_and_set_heads(self, opt, dataset):
+        """
+        dataset: can be either a class or an instance!
+        """
         input_h, input_w = dataset.default_resolution
         opt.mean, opt.std = dataset.mean, dataset.std
         opt.num_classes = dataset.num_classes
