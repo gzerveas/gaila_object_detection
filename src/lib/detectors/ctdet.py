@@ -98,7 +98,28 @@ class CtdetDetector(BaseDetector):
         # debugger.show_all_imgs(pause=self.pause)
 
         dump_dir = self.opt.image_out
-        if not os.path.exists(dump_dir):
-            print("Dumping output in: {}".format(dump_dir))
-            os.makedirs(dump_dir)
         debugger.save_all_imgs(path=dump_dir)
+
+
+class CtdetFeatDetector(CtdetDetector):
+    """Same as CtdetDetector but returns activations of penultimate layer as feature. Requires model returning [feature, output]"""
+    def process(self, images, return_time=False):
+        with torch.no_grad():
+            feature, output = self.model(images)
+            hm = output['hm'].sigmoid_()
+            wh = output['wh']
+            reg = output['reg'] if self.opt.reg_offset else None
+            if self.opt.flip_test:
+                hm = (hm[0:1] + flip_tensor(hm[1:2])) / 2
+                wh = (wh[0:1] + flip_tensor(wh[1:2])) / 2
+                reg = reg[0:1] if reg is not None else None
+            torch.cuda.synchronize()
+            forward_time = time.time()
+            dets = ctdet_decode(hm, wh, reg=reg, cat_spec_wh=self.opt.cat_spec_wh, K=self.opt.K)
+
+        feature = torch.flatten(feature).cpu().numpy()
+        heatmaps = torch.flatten(hm).cpu().numpy()
+        if return_time:
+            return output, dets, forward_time, feature, heatmaps
+        else:
+            return output, dets, feature, heatmaps

@@ -116,7 +116,13 @@ class BaseDetector(object):
             pre_process_time = time.time()
             pre_time += pre_process_time - scale_start_time
 
-            output, dets, forward_time = self.process(images, return_time=True)
+            out_tuple = self.process(images, return_time=True)
+            if len(out_tuple) == 5:  # this happens when 'ctdet_feat' is used
+                output, dets, forward_time, feature, heatmap = out_tuple
+            else:
+                output, dets, forward_time = out_tuple
+                feature = None
+                heatmap = None
 
             torch.cuda.synchronize()
             net_time += forward_time - pre_process_time
@@ -140,14 +146,10 @@ class BaseDetector(object):
         tot_time += end_time - start_time
 
 
-        dir_name, _ = os.path.split(image_or_path_or_tensor)
-        if not os.path.exists(dir_name):
-            print("Dumping output in: {}".format(dump_dir))
-            os.makedirs(dump_dir)
         if self.opt.debug >= 1:
             self.show_results(debugger, image, results, image_name=image_name)
 
-        return {'results': results, 'tot': tot_time, 'load': load_time,
+        return {'results': results, 'feature': feature, 'heatmap': heatmap, 'tot': tot_time, 'load': load_time,
                 'pre': pre_time, 'net': net_time, 'dec': dec_time,
                 'post': post_time, 'merge': merge_time}
 

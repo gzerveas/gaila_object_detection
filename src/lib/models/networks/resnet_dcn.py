@@ -288,3 +288,31 @@ def get_pose_net(num_layers, heads, head_conv=256):
   model = PoseResNet(block_class, layers, heads, head_conv=head_conv)
   model.init_weights(num_layers)
   return model
+
+
+class FeatResDCN(PoseResNet):
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.deconv_layers(x)
+        ret = {}
+        for head in self.heads:
+            ret[head] = self.__getattr__(head)(x)
+        return [x, ret]  # returns penultimate layer as feature
+
+
+def get_feat_resdcn(num_layers, heads, head_conv=256):
+  block_class, layers = resnet_spec[num_layers]
+
+  model = FeatResDCN(block_class, layers, heads, head_conv=head_conv)
+  model.init_weights(num_layers)
+  return model

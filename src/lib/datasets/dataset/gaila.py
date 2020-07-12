@@ -22,13 +22,13 @@ class GAILA(data.Dataset):
 
     # Canonical setting
     num_classes = 36  # class variable is used if no instance member variable is set
-    class_exceptions = ['Wall', 'Ceiling']
+    class_exceptions = ['Wall', 'Ceiling', 'Floor']
     ########## NEED TO COMPUTE ##############
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115], dtype=np.float32).reshape(1, 1, 3)
     std = np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
 
-    def __init__(self, opt, split):
+    def __init__(self, opt, split, shuffle=True):
 
         super(GAILA, self).__init__()
         self.failed_images = set([])
@@ -89,7 +89,7 @@ class GAILA(data.Dataset):
                 else:
                     selected_dirs = list(filter(lambda x: re.search(opt.train_pattern, x), task_dirs))
 
-            self.all_frames = []  # (frame path, frame dataframe containing annotations)
+            self.all_frames = []  # list of tuples: (frame path, frame dataframe containing annotations)
             for _dir in tqdm(selected_dirs, desc=f'Loading {split} annotation files'):
                 image_paths = os.listdir(_dir)  # base file names of all frame files corresponding to task directory
                 image_ids = []  # list of image IDs, by cutting extension from path
@@ -99,7 +99,6 @@ class GAILA(data.Dataset):
                         image_ids.append(int(img.split('.')[0]))
                     else:
                         self.failed_images.add(full_path)
-                # image_ids = [int(img.split('.')[0]) for img in image_paths if (os.stat(img).st_size > 10)]  # list of image IDs, by cutting extension
 
                 bbox_path = os.path.join(opt.bounds_dir, os.path.basename(_dir) + '_bounds.txt')
                 raw_path = _dir.replace('images_10hz', 'raw') + '.txt'
@@ -146,8 +145,8 @@ class GAILA(data.Dataset):
                     pickle.dump(self.all_frames, f, pickle.HIGHEST_PROTOCOL)
                 print("Done")
 
-
-        random.shuffle(self.all_frames)
+        if shuffle:
+            random.shuffle(self.all_frames)
 
         if opt.classnames_from is None:  # Infer classes from loaded annotations
             dataframes = pd.concat(annotations for path, annotations in self.all_frames)

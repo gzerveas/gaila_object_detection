@@ -1,3 +1,7 @@
+"""
+python main.py gaila_ctdet --exp_id TRAIN_trainVS1_evalVS1c_task123_resdcn18_fpt800 --frames_dir ~/data/GAILA/images_10hz/ --bounds_dir ~/data/GAILA/bounds/  --eval_pattern "_1c_task[123]" --classnames_from ../reduced_classnames.txt --save_annotations ~/scratch/TRAIN_trainVS1_evalVS1_resdcn18_fpt800 --arch resdcn_18 --batch_size 32 --master_batch -1 --lr 1.25e-4 --gpus 0 --num_workers 8  --frames_per_task 800 --num_epochs 30
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -37,8 +41,8 @@ class Opts(object):
                                  Otherwise class names are detected from annotations, but this may fail if evaluating on a set containing less object classes than the training set""")
         self.parser.add_argument('--save_classnames_to', required=False,
                                  help='Path of .txt file where to write detected class names, 1 per line')
-        self.parser.add_argument('--image_out', default='output_dump',
-                                 help='Path of root directory to write output image files.')
+        self.parser.add_argument('--image_out',
+                                 help='Path of root directory to write output image files resulting from --debug.')
         self.parser.add_argument('--exp_id', default='default')
         self.parser.add_argument('--test', action='store_true')
         self.parser.add_argument('--debug', type=int, default=0,
@@ -59,6 +63,11 @@ class Opts(object):
                                       'in the exp dir if load_model is empty.')
         self.parser.add_argument('--root_dir', default=os.path.join(os.path.dirname(__file__), '..', '..'),
                                  help='path to root directory where all output (logs, models, predictions etc) will be stored')
+        self.parser.add_argument('--feat_extract',
+                                 help='If set, will serialize extracted features (activations of penultimate layer) to the specified directory.')
+        self.parser.add_argument('--no_visualization', action='store_true',
+                                 help="""Will not create images or videos with detection bounding boxes. Useful for computing metrics and extracting features""")
+
         # system
         self.parser.add_argument('--gpus', default='0',
                                  help='-1 for CPU, use comma for multiple gpus')
@@ -252,7 +261,7 @@ class Opts(object):
 
         # Test Eval Output
         self.parser.add_argument('--eval_vis_output',
-                                 help='Test Vis Output Path')
+                                 help='Output path where to save evaluation results and images. By default structures directories in save_dir')
         self.parser.add_argument('--video_freq', type=int, default=5,
                                  help='Video Frequency')
 
@@ -306,6 +315,12 @@ class Opts(object):
         print('The output will be saved to ', opt.save_dir)
         if opt.eval_vis_output is None:
             opt.eval_vis_output = os.path.join(opt.save_dir, 'output_dump/')
+        if opt.image_out is None:
+            opt.image_out = os.path.join(opt.save_dir, 'demo_out/')
+        if opt.debug:
+            if not os.path.exists(opt.image_out):
+                print("Dumping image output in: {}".format(opt.image_out))
+                os.makedirs(opt.image_out)
 
         if opt.resume and opt.load_model == '':
             model_path = opt.save_dir[:-4] if opt.save_dir.endswith('TEST') \
