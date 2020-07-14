@@ -38,7 +38,8 @@ class Opts(object):
                                   to draw bounding boxes and show performance metrics, instead of running inference""")
         self.parser.add_argument('--classnames_from', required=False,
                                  help="""Path of .txt file containing class names, 1 per line. 
-                                 Otherwise class names are detected from annotations, but this may fail if evaluating on a set containing less object classes than the training set""")
+                                 Otherwise class names are detected from annotations, but this may fail if evaluating 
+                                 on a set containing less object classes than the training set""")
         self.parser.add_argument('--save_classnames_to', required=False,
                                  help='Path of .txt file where to write detected class names, 1 per line')
         self.parser.add_argument('--image_out',
@@ -63,10 +64,17 @@ class Opts(object):
                                       'in the exp dir if load_model is empty.')
         self.parser.add_argument('--root_dir', default=os.path.join(os.path.dirname(__file__), '..', '..'),
                                  help='path to root directory where all output (logs, models, predictions etc) will be stored')
-        self.parser.add_argument('--feat_extract',
-                                 help='If set, will serialize extracted features (activations of penultimate layer) to the specified directory.')
+        self.parser.add_argument('--feat_extract', default=None,
+                                 help="""Directory where extracted features (heatmaps and activations of penultimate layer) 
+                                 will be serialized in a hierarchical dir. structure""")
+        self.parser.add_argument('--feat_store_stacked', action='store_true',
+                                 help="""Extracted features will also be serialized as a single file with their IDs. May be huge!""")
         self.parser.add_argument('--no_visualization', action='store_true',
-                                 help="""Will not create images or videos with detection bounding boxes. Useful for computing metrics and extracting features""")
+                                 help="""Will not create images or videos with detection bounding boxes. 
+                                 Useful for computing metrics and extracting features""")
+        self.parser.add_argument('--no_metrics', action='store_true',
+                                 help="""Will not output metrics. 
+                                 Useful for extracting features and storing visualizations of detections""")
 
         # system
         self.parser.add_argument('--gpus', default='0',

@@ -117,8 +117,8 @@ class CtdetFeatDetector(CtdetDetector):
             forward_time = time.time()
             dets = ctdet_decode(hm, wh, reg=reg, cat_spec_wh=self.opt.cat_spec_wh, K=self.opt.K)
 
-        feature = torch.flatten(feature).cpu().numpy()
-        heatmaps = torch.flatten(hm).cpu().numpy()
+        feature = feature.cpu().numpy()  # flatten: torch.flatten(feature).cpu().numpy()
+        heatmaps = hm.cpu().numpy()  # flatten: torch.flatten(hm).cpu().numpy()
         if return_time:
             return output, dets, forward_time, feature, heatmaps
         else:

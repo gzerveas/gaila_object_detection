@@ -87,30 +87,33 @@ def test(opt):
 
         if not opt.load_predictions:
             ret = detector.run(img_path)
-            results[img_id] = ret['results']
+            if not opt.no_metrics:
+                results[img_id] = ret['results']
         if opt.feat_extract:
             feature_path = img_to_feature_path(img_path)
-            feature_paths.append(feature_path)
-            features.append(ret['feature'])
-            heatmaps.append(ret['heatmap'])
             write_path = os.path.join(opt.feat_extract, feature_path)
             write_dir = os.path.split(write_path)[0]
             if not os.path.exists(write_dir):
                 os.makedirs(write_dir)
             np.savez(write_path, features=ret['feature'], heatmaps=ret['heatmap'])
+            if opt.feat_store_stacked:
+                feature_paths.append(feature_path)
+                features.append(ret['feature'])
+                heatmaps.append(ret['heatmap'])
 
-        save_path, save_file, metrics = save_eval_vis(detRes=results[img_id], frameInfo=dataset.all_frames[i],
-                                                      class_names=dataset.class_name, Vis_thresh=opt.vis_thresh,
-                                                      save_path=opt.eval_vis_output)
-        if save_path not in video_path:
-            video_path[save_path] = [save_file]
-        else:
-            video_path[save_path].append(save_file)
+        if not (opt.no_visualization and opt.no_metrics):
+            save_path, save_file, metrics = save_eval_vis(detRes=ret['results'], frameInfo=dataset.all_frames[i],
+                                                          class_names=dataset.class_name, Vis_thresh=opt.vis_thresh,
+                                                          save_path=opt.eval_vis_output)
+            if save_path not in video_path:
+                video_path[save_path] = [save_file]
+            else:
+                video_path[save_path].append(save_file)
 
-        if save_path not in metrics_pool:
-            metrics_pool[save_path] = [metrics]
-        else:
-            metrics_pool[save_path].append(metrics)
+            if save_path not in metrics_pool:
+                metrics_pool[save_path] = [metrics]
+            else:
+                metrics_pool[save_path].append(metrics)
 
         Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(i, num_iters, total=bar.elapsed_td, eta=bar.eta_td)
         if not opt.load_predictions:
@@ -129,11 +132,12 @@ def test(opt):
 
     if not opt.no_visualization:
         create_videos(video_path, opt.video_freq)
-    generate_basic_metrics(metrics_pool, opt.eval_vis_output)
-    # This uses the COCO API to compute and present performance metrics, and dumps detections as json and pickle (if not loaded)
-    dataset.run_eval(results, opt.save_dir, store_pickle=(not opt.load_predictions))
+    if not opt.no_metrics:
+        generate_basic_metrics(metrics_pool, opt.eval_vis_output)
+        # This uses the COCO API to compute and present performance metrics, and dumps detections as json and pickle (if not loaded)
+        dataset.run_eval(results, opt.save_dir, store_pickle=(not opt.load_predictions))
 
-    if opt.feat_extract:
+    if opt.feat_extract and opt.feat_store_stacked:
         feature_IDs = np.array(feature_paths)
         features = np.stack(features)
         heatmaps = np.stack(heatmaps)

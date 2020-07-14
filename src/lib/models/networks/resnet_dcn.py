@@ -307,7 +307,7 @@ class FeatResDCN(PoseResNet):
         ret = {}
         for head in self.heads:
             ret[head] = self.__getattr__(head)(x)
-        return [x, ret]  # returns penultimate layer as feature
+        return [x, ret]  # returns penultimate layer 'x' as feature, as well as the usual output
 
 
 def get_feat_resdcn(num_layers, heads, head_conv=256):
